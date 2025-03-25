@@ -1,14 +1,8 @@
 const cron = require("node-cron");
-const reservationService = require("./services/reservation.service");
+const { checkOverdueBooks } = require("./services/borrow.service");
 
-// Run every 5 minutes to check for available books and notify users
-cron.schedule("*/5 * * * *", async () => {
-  console.log("🔄 Checking for available books...");
-
-  const books = await require("./models").Book.findAll();
-  for (const book of books) {
-    await reservationService.notifyUsers(book.book_id);
-  }
+cron.schedule("0 0 * * *", async () => {
+  console.log("Checking for overdue books...");
+  await checkOverdueBooks();
+  console.log("Overdue check completed.");
 });
-
-console.log("✅ Book reservation cron job started.");

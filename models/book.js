@@ -3,14 +3,9 @@ const sequelize = require("../config/database");
 
 class Book extends Model {
   static associate(models) {
-    // ✅ Book belongs to an Author
     Book.belongsTo(models.Author, { foreignKey: "author_id", as: "author" });
-
-    // ✅ Book belongs to a Category
     Book.belongsTo(models.Category, { foreignKey: "category_id", as: "category" });
-
-    // ✅ Book has many Reservations
-    Book.hasMany(models.Reservation, { foreignKey: "book_id" });
+    Book.hasMany(models.Reservation, { foreignKey: "reservation_id" });
   }
 }
 
@@ -40,7 +35,7 @@ Book.init(
       allowNull: true,
     },
     genre: {
-      type: DataTypes.ARRAY(DataTypes.STRING), // ✅ Allows multiple genres
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
     },
     publication_year: {

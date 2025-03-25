@@ -1,15 +1,14 @@
 
 const express = require("express");
 const router = express.Router();
-const ReservationController = require("../controllers/reservation.controller");
-const { authenticate, checkRole} = require("../middlewares/auth.middleware"); 
+const { authenticate, authorizeAdmin, authorizeUser, authorizeAdminOrUser } = require("../middlewares/auth.middleware");
+const reservationController = require("../controllers/reservation.controller");
 
 
-router.post("/:book_id/reserve", authenticate, checkRole(["user","admin"]), ReservationController.createReservation);
-router.get("/", authenticate, checkRole(["user","admin"]), ReservationController.getAllReservations);
-
-router.get("/:id", authenticate, checkRole(["user","admin"]), ReservationController.getReservationById);
-router.put("/admin/:id", authenticate, checkRole(["admin"]), ReservationController.updateReservationStatus);
-router.delete("/admin/:id", authenticate, checkRole(["admin"]), ReservationController.deleteReservation);
+router.post("/", reservationController.createReservation);
+router.get("/", reservationController.getAllReservations);
+router.get("/:reservation_id", reservationController.getReservationById);
+router.put("/:reservation_id/fulfill", reservationController.fulfillReservation);
+router.put("/:reservation_id/cancel", reservationController.cancelReservation);
 
 module.exports = router;

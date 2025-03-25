@@ -25,17 +25,22 @@ module.exports = {
         allowNull: false,
       },
       type: {
-  type: Sequelize.ENUM("Review", "Reminder", "Update", "Reservation"),
+  type: Sequelize.ENUM("Review", "Reminder", "Update", "Reservation","General"),
   allowNull: false,
 },
       is_read: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
+        type: Sequelize.ENUM("Unread", "Read"),
+              defaultValue: "Unread",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW,
+        defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"), 
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"), 
       },
     });
   },

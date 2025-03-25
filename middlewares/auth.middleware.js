@@ -1,4 +1,3 @@
-const { User } = require("../models");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const SECRET_KEY = process.env.JWT_SECRET; 
@@ -41,43 +40,29 @@ const authenticate = (req, res, next) => {
   }
 };
 
- 
 
-const checkRole = (roles) => {
-  return async (req, res, next) => {
-    try {
-      console.log("Middleware Hit: Checking User Role");
-
-      const token = req.cookies.token; // HttpOnly cookie
-      console.log("Received Token:", token);
-
-      if (!token) {
-        return res.status(401).json({ message: "Unauthorized. No token provided." });
-      }
-
-      // Verify JWT
-      const decoded = jwt.verify(token, SECRET_KEY);
-      console.log("Decoded Token:", decoded);
-
-      const user = await User.findByPk(decoded.id);
-      console.log("Fetched User from DB:", user);
-
-      if (!user) {
-        return res.status(401).json({ message: "User not found." });
-      }
-      
-      if (!roles.includes(user.role)) {
-        return res.status(403).json({ message: "Access denied." });
-      }
-      
-      req.user = user; 
-      next();
-    } catch (error) {
-      console.error("Auth Error:", error.message);
-      res.status(401).json({ message: "Invalid or expired token." });
-    } 
-  };
+//AUTHORIZATION
+const authorizeAdmin = (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied. Admins only." });
+  }
+  next();
+};
+const authorizeUser = (req, res, next) => {
+  if (req.user.role !== "user") {
+    return res.status(403).json({ message: "Access denied. Users only." });
+  }
+  next();
 };
 
+// If both Admin & User should access a route
+const authorizeAdminOrUser = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "user") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+  next();
+};
 
-module.exports = { authenticate, checkRole };
+module.exports = { authenticate, authorizeAdmin, authorizeUser, authorizeAdminOrUser };
+
+

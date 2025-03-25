@@ -5,8 +5,11 @@ const sequelize = require("./config/database");
 const http = require("http");
 const { Server } = require("socket.io");
 const cookieParser = require("cookie-parser");
+require("dotenv").config();
 
-require("./cronJobs"); // Start cron job for book availability notifications
+require("./cronJobs");
+require("./services/overdueReminder.service");
+
 
 const app = express();
 
@@ -37,13 +40,15 @@ const shareRoutes = require("./routes/share.routes");
 const reservationRoutes = require("./routes/reservation.routes");
 const authorRoutes = require("./routes/author.routes");
 const AdminRoutes = require("./routes/admin.routes");
+const authMe = require("./middlewares/auth.me");
+
 
 
 app.use("/api/auth", authRoutes);//registration and login
+app.use("/api/auth", authMe);
 app.use("/api/users/authors", authorRoutes);
 app.use("/api/admin/authors", authorRoutes);
 app.use("/api/users/books", bookRoutes);
-app.use("/api/admin/books", bookRoutes);
 app.use("/uploads", express.static("public/uploads")); // Serve images
 app.use("/api/users", userRoutes);
 app.use("/api", AdminRoutes);//user admin handler routes
@@ -85,6 +90,12 @@ app.set("io", io);
 sequelize.sync().then(() => {
   console.log("Database synced!");
 });
+
+app.get("/", (_req,res) =>{
+  res.send(process.env.NODE_ENV)
+  console.log(process.env.NODE_ENV)
+})
+
 
 //  Start Server
 const PORT = 4000;

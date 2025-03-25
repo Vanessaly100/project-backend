@@ -1,4 +1,3 @@
-'use strict';
 "use strict";
 
 module.exports = {
@@ -30,6 +29,10 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: true,
       },
+      due_date: {
+            type: Sequelize.DATE,
+            allowNull: false,
+          },
       status: {
         type: Sequelize.ENUM("borrowed", "returned", "overdue"),
         allowNull: false,

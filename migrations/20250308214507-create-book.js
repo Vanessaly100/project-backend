@@ -24,8 +24,8 @@ module.exports = {
         onDelete: "CASCADE",
       },
        cover_url: {
-        type: Sequelize.STRING, // ✅ Add this line
-        allowNull: true, // ✅ Allow it to be null in case some books don’t have images
+        type: Sequelize.STRING, 
+        allowNull: true, 
       },
       genre: {
         type: Sequelize.STRING,

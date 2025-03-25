@@ -1,48 +1,72 @@
 
+const { Reservation, Notification, Book } = require("../models");
 
-const { Reservation, Book, User } = require("../models");
+// Create a reservation
+exports.createReservation = async (user_id, book_id) => {
+  const reservation = await Reservation.create({ user_id, book_id });
 
-class ReservationService {
-  static async createReservation(user_id, book_id) {
-    const book = await Book.findByPk(book_id);
-    if (!book) throw new Error("Book not found");
+  // Notify the user
+  await Notification.create({
+    user_id,
+    message: `Your reservation for book ID ${book_id} is pending.`,
+    notification_type: "Reservation",
+  });
 
-    const reservation = await Reservation.create({ user_id, book_id });
-    return reservation;
-  }
-
-  static async getAllReservations() {
-    return await Reservation.findAll({ 
-      include: [
-         { model: User, as: "user", attributes: ["first_name", "last_name", "email"] }, 
-    { model: Book, as: "book", attributes: ["title"] }
-      ],
-    });
-  }
-
-  
-static async getReservationById  (reservationId)  {
-  return await Reservation.findOne({ where: { reservation_id: reservationId } });
+  return reservation;
 };
 
+// Get all reservations
+exports.getAllReservations = async () => {
+  return await Reservation.findAll({
+    include: ["user", "book"],
+    order: [["createdAt", "DESC"]],
+  });
+};
 
-  static async updateReservationStatus(reservation_id, status) {
-    const reservation = await Reservation.findByPk(reservation_id);
-    if (!reservation) throw new Error("Reservation not found");
+// Get a reservation by ID
+exports.getReservationById = async (reservation_id) => {
+  return await Reservation.findByPk(reservation_id, { include: ["user", "book"] });
+};
 
-    reservation.status = status;
-    await reservation.save();
-    return reservation;
-  }
+// Fulfill a reservation (convert to borrow)
+exports.fulfillReservation = async (reservation_id) => {
+  const reservation = await Reservation.findByPk(reservation_id);
+  if (!reservation) throw new Error("Reservation not found");
 
-  static async deleteReservation(reservation_id) {
+  // Update reservation status
+  await reservation.update({ status: "Fulfilled" });
+
+  // Notify user
+  await Notification.create({
+    user_id: reservation.user_id,
+    message: `Your reserved book (ID: ${reservation.book_id}) is now available for borrowing.`,
+    notification_type: "Reservation",
+  });
+
+  return reservation;
+};
+
+// Cancel a reservation
+exports.cancelReservation = async (reservation_id) => {
+  const reservation = await Reservation.findByPk(reservation_id);
+  if (!reservation) throw new Error("Reservation not found");
+
+  await reservation.update({ status: "Cancelled" });
+
+  // Notify user
+  await Notification.create({
+    user_id: reservation.user_id,
+    message: `Your reservation for book ID ${reservation.book_id} has been cancelled.`,
+    notification_type: "Reservation",
+  });
+
+  return reservation;
+};
+
+exports.deleteReservation = async(reservation_id) =>{
     const reservation = await Reservation.findByPk(reservation_id);
     if (!reservation) throw new Error("Reservation not found");
 
     await reservation.destroy();
     return { message: "Reservation deleted" };
   }
-}
-
-module.exports = ReservationService;
-

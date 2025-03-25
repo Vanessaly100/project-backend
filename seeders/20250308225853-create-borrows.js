@@ -24,10 +24,11 @@ module.exports = {
     const borrows = [
       {
         borrow_id: uuidv4(),
-        user_id: users[0].user_id,  // Use real user ID
-        book_id: books[0].book_id,  // Use real book ID
+        user_id: users[0].user_id,
+        book_id: books[0].book_id,
         borrow_date: new Date(),
-        return_date: new Date(new Date().setDate(new Date().getDate() + 14)),
+        due_date: new Date(new Date().setDate(new Date().getDate() + 14)), // Due in 14 days
+        return_date: null, // Not returned yet
         status: "borrowed",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -36,8 +37,9 @@ module.exports = {
         borrow_id: uuidv4(),
         user_id: users[1].user_id,
         book_id: books[1].book_id,
-        borrow_date: new Date(new Date().setDate(new Date().getDate() - 20)),
-        return_date: new Date(new Date().setDate(new Date().getDate() - 6)),
+        borrow_date: new Date(new Date().setDate(new Date().getDate() - 20)), // Borrowed 20 days ago
+        due_date: new Date(new Date().setDate(new Date().getDate() - 6)), // Due 6 days ago
+        return_date: null, // Not returned (overdue)
         status: "overdue",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -46,8 +48,9 @@ module.exports = {
         borrow_id: uuidv4(),
         user_id: users[2].user_id,
         book_id: books[2].book_id,
-        borrow_date: new Date(new Date().setDate(new Date().getDate() - 30)),
-        return_date: new Date(new Date().setDate(new Date().getDate() - 16)),
+        borrow_date: new Date(new Date().setDate(new Date().getDate() - 30)), // Borrowed 30 days ago
+        due_date: new Date(new Date().setDate(new Date().getDate() - 16)), // Due 16 days ago
+        return_date: new Date(new Date().setDate(new Date().getDate() - 16)), // Returned on due date
         status: "returned",
         createdAt: new Date(),
         updatedAt: new Date(),
