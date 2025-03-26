@@ -57,12 +57,6 @@ const loginUser = async ({ email, password }) => {
     { expiresIn: "7d" }
   );
 
-  // Store token in cookies
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "None"
-  });
 console.log(token)
   return { token, role: user.role }; 
 };
