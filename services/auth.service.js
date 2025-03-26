@@ -43,6 +43,9 @@ const registerAdmin = async ({ first_name, last_name, email, password, adminSecr
 const loginUser = async ({ email, password }) => {
   const user = await User.findOne({ where: { email } });
 
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
   if (!user) throw new Error("Invalid email or password");
 
   const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -53,6 +56,13 @@ const loginUser = async ({ email, password }) => {
     SECRET_KEY,
     { expiresIn: "7d" }
   );
+
+  // Store token in cookies
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None"
+  });
 console.log(token)
   return { token, role: user.role }; 
 };
