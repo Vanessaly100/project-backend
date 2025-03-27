@@ -18,7 +18,7 @@ const FRONTEND_ORIGIN = "http://localhost:3000";
 
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN, // Allow requests from frontend
+    origin: "*", // Allow requests from frontend
     credentials: true,       // Allow cookies
   })
 ); 
