@@ -42,12 +42,12 @@ const shareRoutes = require("./routes/share.routes");
 const reservationRoutes = require("./routes/reservation.routes");
 const authorRoutes = require("./routes/author.routes");
 const AdminRoutes = require("./routes/admin.routes");
-const authMe = require("./middlewares/auth.me");
+// const authMe = require("./middlewares/auth.me");
 
 
 
 app.use("/api/auth", authRoutes);//registration and login
-app.use("/api/auth", authMe);
+// app.use("/api/auth", authMe);
 app.use("/api/users/authors", authorRoutes);
 app.use("/api/admin/authors", authorRoutes);
 app.use("/api/users/books", bookRoutes);
@@ -97,6 +97,12 @@ app.get("/", (_req,res) =>{
   res.send(process.env.NODE_ENV)
   console.log(process.env.NODE_ENV)
 })
+
+
+app.use((req, res, next) => {
+  console.log(`Incoming request: ${req.method} ${req.url}`);
+  next();
+});
 
 
 //  Start Server
