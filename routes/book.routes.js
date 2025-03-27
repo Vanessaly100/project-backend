@@ -8,7 +8,7 @@ const { authenticate, authorizeAdmin, authorizeUser, authorizeAdminOrUser } = re
 router.get("/public", bookController.getAllBooks);
 router.get("/public/:book_id", bookController.getBookById);
 
-router.get("/",authenticate,authorizeAdminOrUser, bookController.getAllBooks);
+router.get("/",authenticate, bookController.getAllBooks);
 router.get("/:book_id",authenticate,authorizeAdminOrUser, bookController.getBookById);
 
 //  Admin Routes (Only Admins Can Manage Books)
