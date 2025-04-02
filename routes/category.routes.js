@@ -8,13 +8,13 @@ const {
 } = require("../controllers/category.Controller");
 
 const router = express.Router();
-const { authenticate, authorizeAdmin, authorizeUser, authorizeAdminOrUser } = require("../middlewares/auth.middleware");
+const { authenticateUser, authorizeAdmin,} = require("../middlewares/auth.middleware");
 
 
-router.get("/",authenticate,authorizeAdminOrUser, getAllCategories);
-router.get("/:category_id",authenticate, authorizeAdminOrUser, getCategoryById);
-router.post("/", authenticate, authorizeAdmin, createCategory);
-router.put("/:category_id",authenticate,authorizeAdmin, updateCategory);
-router.delete("/:category_id",authenticate, authorizeAdmin, deleteCategory);
+router.get("/",authenticateUser, getAllCategories);
+router.get("/:category_id",authenticateUser, getCategoryById);
+router.post("/", authenticateUser, authorizeAdmin, createCategory);
+router.put("/:category_id",authenticateUser,authorizeAdmin, updateCategory);
+router.delete("/:category_id",authenticateUser, authorizeAdmin, deleteCategory);
 
 module.exports = router;

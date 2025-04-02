@@ -1,79 +1,125 @@
-const { Notification } = require("../models");
-
-// Create a new notification
-// exports.createNotification = async (user_id,book_id, message, notification_type) => {
-//   return await Notification.create({ user_id, book_id,  message, notification_type }); 
-// };
-
-
-
-
-
-
+const { Notification, User, Book } = require("../models");
 const moment = require("moment");
+const {sendEmail} = require("../lib/email"); // Optional: If you still want email notifications
 
-// Function to create a new notification
-exports. createNotification = async (user_id, book_id, message, notification_type) => {
-  try {
-    return await Notification.create({ user_id, book_id, message, notification_type });
-  } catch (error) {
-    console.error("❌ Error creating notification:", error.message);
-    throw new Error("Failed to create notification");
-  }
-};
 
 // Function to create a borrow notification
 exports.createBorrowNotification = async (user_id, book_id, due_date) => {
-  const formattedDueDate = moment(due_date).format("dddd, MMMM Do YYYY");
-  const message = `📢 Reminder: Your borrowed book is due on ${formattedDueDate}. Please return it on time.`;
+  try {
+    const user = await User.findByPk(user_id);
+    const book = await Book.findByPk(book_id);
+    if (!user || !book) throw new Error("User or Book not found");
 
-  return await createNotification(user_id, book_id, message, "borrow");
+    const formattedDueDate = moment(due_date).format("dddd, MMMM Do YYYY");
+    const message = `📢 Reminder: Your borrowed book "${book.title}" is due on ${formattedDueDate}. Please return it on time.`;
+
+    // Save notification in DB
+    await Notification.create({ user_id, book_id, message, notification_type: "borrow" });
+
+    // Send email notification
+    await sendEmail(user.email, "Book Borrowing Reminder", message);
+
+    console.log(`📧 Borrow reminder sent to ${user.email}`);
+  } catch (error) {
+    console.error("Error creating borrow notification:", error.message);
+  }
 };
 
-// Function to create a reservation notification
-exports.createReservationNotification = async (user_id, book_id) => {
-  const message = `📌 Your reservation for the book has been received. You will be notified when it's available.`;
 
-  return await createNotification(user_id, book_id, message, "reservation");
+exports.createNotification = async (first_name, email, book_title, message, notification_type) => {
+  // Find user by first_name and email
+  const user = await User.findOne({
+    where: { first_name, email },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Find book by title
+  const book = await Book.findOne({
+    where: { title: book_title },
+  });
+
+  if (!book) {
+    throw new Error("Book not found");
+  }
+
+  // Create notification with retrieved IDs
+  const notification = await Notification.create({
+    user_id: user.user_id,
+    book_id: book.book_id,
+    message,
+    notification_type,
+  });
+
+  // Send email notification
+  if (user.email) {
+    await sendEmail(user.email, "Library Notification", message);
+  }
+
+  return notification;
 };
 
-// Function to notify the user when a book is available
-exports.createAvailableNotification = async (user_id, book_id) => {
-  const message = `✅ The book you reserved is now available for borrowing. Please collect it within 3 days.`;
+exports.createOverdueNotification = async (user_id, book_id) => {
+  const user = await User.findByPk(user_id);
+  const book = await Book.findByPk(book_id);
 
-  return await createNotification(user_id, book_id, message, "available");
+  if (!user || !book) throw new Error("User or Book not found");
+
+  const message = `Dear ${user.name}, your borrowed book "${book.title}" is overdue. Please return it as soon as possible.`;
+
+  const notification = await Notification.create({
+    user_id,
+    book_id,
+    message,
+    notification_type: "overdue",
+  });
+
+  // Send email if user has an email
+  if (user.email) {
+    await sendEmail(user.email, "Overdue Book Notice", message);
+  }
+
+  return notification;
 };
 
-
-
-
-// Get all notifications (for admin)
 exports.getAllNotifications = async () => {
-  return await Notification.findAll({ order: [["createdAt", "DESC"]] });
-};
-
-// Get notifications for a specific user
-exports.getUserNotifications = async (user_id) => {
   return await Notification.findAll({
-    where: { user_id },
+    include: [{ model: User, as: "user", attributes: ["first_name", "email"] },{ model: Book, as: "book", attributes: ["title"] }],
     order: [["createdAt", "DESC"]],
   });
 };
 
-// Mark a notification as read
+exports.getUserNotifications = async (user_id) => {
+  return await Notification.findAll({
+    where: { user_id },
+    include: [{ model: Book, as: "book", attributes: ["title"] }],
+    order: [["createdAt", "DESC"]],
+  });
+};
+
 exports.markNotificationAsRead = async (notification_id) => {
   const notification = await Notification.findByPk(notification_id);
   if (!notification) throw new Error("Notification not found");
 
-  await notification.update({ status: "read" });
+  notification.is_read = "Read";
+  await notification.save();
+
   return notification;
 };
 
-// Delete a notification
-exports.deleteNotification = async (notification_id) => {
-  const notification = await Notification.findByPk(notification_id);
-  if (!notification) throw new Error("Notification not found");
-
-  await notification.destroy();
-  return { message: "Notification deleted successfully" };
+exports.markAllUserNotificationsAsRead = async (user_id) => {
+  await Notification.update({ is_read: true }, { where: { user_id } });
 };
+
+// Notification service
+exports.deleteNotification = async (notification_id) => {
+  // This returns the number of rows affected (deleted)
+  const rowsDeleted = await Notification.destroy({
+    where: { notification_id: notification_id },
+  });
+
+  return rowsDeleted > 0; // If rowsDeleted is greater than 0, the deletion was successful
+};
+

@@ -1,15 +1,16 @@
 const express = require("express");
-const router = express.Router();
+
 const authorController = require("../controllers/author.controller");
-const { authenticate, authorizeAdmin, authorizeUser, authorizeAdminOrUser } = require("../middlewares/auth.middleware");
+const { authenticateUser, authorizeAdmin, } = require("../middlewares/auth.middleware");
+const router = express.Router();
 
 
-router.get("/", authenticate, authorizeAdminOrUser, authorController.getAllAuthors);
-router.get("/:id", authenticate, authorizeAdminOrUser, authorController.getAuthorById);
-router.get("/name/:name", authenticate,authorizeAdminOrUser, authorController.getAuthorByName);
+router.get("/", authenticateUser,authorController.getAllAuthors);
+router.get("/:id", authenticateUser, authorController.getAuthorById);
+router.get("/name/:name", authenticateUser, authorController.getAuthorByName);
 
-router.post("/", authenticate, authorizeAdmin, authorController.createAuthor);
-router.put("/:id", authenticate, authorizeAdmin, authorController.updateAuthor);
-router.delete("/:id", authenticate, authorizeAdmin, authorController.deleteAuthor);
+router.post("/", authenticateUser, authorizeAdmin, authorController.createAuthor);
+router.put("/:id", authenticateUser, authorizeAdmin, authorController.updateAuthor);
+router.delete("/:id", authenticateUser, authorizeAdmin, authorController.deleteAuthor);
 
 module.exports = router;

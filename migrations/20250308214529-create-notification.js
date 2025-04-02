@@ -25,7 +25,7 @@ module.exports = {
         allowNull: false,
       },
       type: {
-  type: Sequelize.ENUM("Review", "Reminder", "Update", "Reservation","General"),
+  type: Sequelize.ENUM("Review", "Borrow", "Return", "Overdue","Reminder", "Update", "Reservation","General"),
   allowNull: false,
 },
       is_read: {

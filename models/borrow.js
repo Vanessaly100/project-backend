@@ -43,6 +43,10 @@ Borrow.init(
       type: DataTypes.ENUM("Borrowed", "Returned", "Overdue"),
       defaultValue: "Borrowed",
     },
+    // notified: {
+    //   type: DataTypes.BOOLEAN,
+    //   defaultValue: false,
+    // },
   },
   {
     sequelize,

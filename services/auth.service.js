@@ -1,10 +1,9 @@
 
-
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
-const env = require("../config/env");
 require("dotenv").config();
+const userService = require("../services/user.service");
 
 const SECRET_KEY = process.env.JWT_SECRET || process.env.JWT_SECRET; 
 
@@ -13,7 +12,8 @@ const registerUser = async ({ first_name, last_name, email, password }) => {
   const existingUser = await User.findOne({ where: { email } });
   if (existingUser) throw new Error("Email already in use");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // Hash password using the service function
+    const hashedPassword = await userService.hashPassword(password);;
 
   return await User.create({
     first_name, last_name, email, 

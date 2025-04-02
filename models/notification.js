@@ -29,7 +29,7 @@ Notification.init(
       onDelete: "SET NULL",
     },
     type: {
-      type: DataTypes.ENUM("Review", "Reminder", "Update", "Reservation","General"),
+      type: DataTypes.ENUM("Review", "Borrow", "Return", "Overdue","Reminder", "Update", "Reservation","General"),
       defaultValue: "General",
     },
     message: {
