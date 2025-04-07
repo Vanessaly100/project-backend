@@ -41,12 +41,18 @@ module.exports = {
       reading_preferences: {
         type: Sequelize.ARRAY(Sequelize.STRING),
       },
-      wishlist: {
-        type: Sequelize.ARRAY(Sequelize.UUID),
-      },
-      borrow_history: {
-        type: Sequelize.ARRAY(Sequelize.UUID),
-      },
+      rewarded: {
+  type: Sequelize.BOOLEAN,
+  defaultValue: false,
+},
+
+      // wishlist: {
+      //   type: Sequelize.ARRAY(Sequelize.UUID),
+      // },
+      // borrow_history: {
+      //   type: Sequelize.ARRAY(Sequelize.UUID),
+      // },
+      
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

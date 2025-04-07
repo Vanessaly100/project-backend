@@ -1,82 +1,222 @@
-const { Borrow, User, Book, Reservation } = require("../models");
+const { Borrow, User, Book,Author, Reservation } = require("../models");
 const { Op } = require("sequelize");
 const { sendEmail } = require("../lib/email");
 const notificationService = require("../services/notification.service");
 
-// Borrow a Book
-exports.borrowBooks = async (user_id, book_id) => {
-  const borrowedBooks = [];
-  const today = new Date();
-  const due_date = new Date(today);
-  due_date.setDate(today.getDate() + 14); // 2 weeks due date
 
-  for (const bookId of book_id) {
-    // Check if the book is already borrowed
-    const existingBorrow = await Borrow.findOne({
-      where: { bookId, status: "borrowed" },
-    });
 
-    if (existingBorrow) {
-      throw new Error(`Book ID ${bookId} is already borrowed.`);
+
+// Get All Borrowed Books
+exports.getAllBorrowedBooks = async () => {
+  return await Borrow.findAll({
+    include: [
+      { model: User, as: "user", attributes: ["user_id", "first_name", "email"] },
+      { model: Book, as: "book", attributes: ["book_id", "title", "author_id"] }
+    ]
+  });
+};
+
+exports.getBorrowById = async (borrow_id) => {
+  const borrow = await Borrow.findByPk(borrow_id, {
+    include: [
+      { model: User, as: "user", attributes: ["user_id", "first_name", "email"] },
+      { model: Book, as: "book", attributes: ["book_id", "title", "author_id"] }
+    ]
+  });
+
+  if (!borrow) throw new Error("Borrow record not found");
+  return borrow;
+};
+
+
+exports.borrowBooks = async (user_id, bookIds) => {
+  try {
+    const results = [];
+
+    const today = new Date();
+    const due_date = new Date(today);
+    due_date.setDate(today.getDate() + 7);
+
+    const user = await User.findByPk(user_id);
+    if (!user) throw new Error("User not found");
+
+    for (const bookId of bookIds) {
+      const book = await Book.findByPk(bookId);
+
+      if (!book) {
+        results.push({
+          bookId,
+          success: false,
+          message: `Book not found.`,
+        });
+        continue;
+      }
+
+      //  Check 1: Already borrowed and not returned
+      const existingBorrow = await Borrow.findOne({
+        where: {
+          user_id,
+          book_id: bookId,
+          status: "Borrowed", // assuming "Borrowed" means not returned
+        },
+      });
+
+      if (existingBorrow) {
+        results.push({
+          bookId,
+          title: book.title,
+          success: false,
+          message: `You have already borrowed "${book.title}" and haven’t returned it yet.`,
+        });
+        continue;
+      }
+
+      // Check 2: No available copies
+      if (book.available_copies <= 0) {
+        results.push({
+          bookId,
+          title: book.title,
+          success: false,
+          message: `"${book.title}" is currently out of stock. Please wait while we restock.`,
+        });
+        continue;
+      }
+
+      //  Passed all checks – create borrow record
+      await Borrow.create({
+        user_id,
+        book_id: bookId,
+        due_date,
+        status: "Borrowed",
+      });
+
+      // Decrease available copies
+      book.available_copies -= 1;
+      await book.save();
+
+      // Add points
+      user.points += 1;
+      if (user.points >= 100 && !user.rewarded) {
+        user.rewarded = true;
+      }
+      await user.save();
+
+      //  Send notification
+      await notificationService.createBorrowNotification({
+        name: `${user.first_name} ${user.last_name}`,
+        email: user.email,
+        title: `You borrowed "${
+          book.title
+        }". Return by ${due_date.toDateString()}`,
+      });
+
+      // Send email
+      await sendEmail(
+        user.email,
+        "Book Borrowed Successfully",
+        `You borrowed "${book.title}". Return by ${due_date.toDateString()}`
+      );
+
+      results.push({
+        bookId,
+        title: book.title,
+        success: true,
+        message: `You successfully borrowed "${
+          book.title
+        }". Return by ${due_date.toDateString()}`,
+      });
     }
 
-    // Borrow book
-    const borrow = await Borrow.create({ user_id, book_id, due_date });
-    borrowedBooks.push(borrow);
+    return results;
+  } catch (err) {
+    throw new Error(err.message);
   }
-
-  // Mark book as unavailable
-  await Book.update({ available: false }, { where: { book_id: book_id } });
-
-  // Notify user
-  await notificationService.createNotification(
-    user_id,
-    `You have successfully borrowed "${Book.title}". Due on ${due_date}.`
-  );
-
-  // Send email notification
-  await sendEmail(
-    User.email,
-    "Book Borrowed Successfully",
-    `You have borrowed "${Book.title}". Please return it before ${due_date}.`
-  );
-
-  return borrowedBooks;
 };
+
+
 
 // Return a Book
-exports.returnBooks = async (user_id, book_id) => {
-  for (const bookId of book_id) {
-    const borrow = await Borrow.findOne({
-      where: { user_id, book_id, status: "borrowed" },
-    });
+exports.returnBooks = async (user_id, bookIds) => {
+  try {
+    const results = [];
 
-    if (!borrow) {
-      throw new Error(`You have not borrowed book ID ${bookId}`);
+    const user = await User.findByPk(user_id);
+    if (!user) throw new Error("User not found");
+
+    for (const book_id of bookIds) {
+      const borrowRecord = await Borrow.findOne({
+        where: {
+          user_id,
+          book_id,
+          status: "Borrowed",
+        },
+      });
+
+      if (!borrowRecord) {
+        results.push({
+          bookId: book_id,
+          success: false,
+          message: "No borrowed record found for this book.",
+        });
+        continue;
+      }
+
+      //  Mark as returned
+      borrowRecord.status = "Returned";
+      await borrowRecord.save();
+
+      const book = await Book.findByPk(book_id);
+      if (book) {
+        book.available_copies += 1;
+        await book.save();
+      }
+
+      //  Add result
+      results.push({
+        bookId: book_id,
+        success: true,
+        message: "Book returned successfully",
+      });
     }
 
-    // Mark as returned
-    await borrow.update({ status: "returned", return_date: new Date() });
+    return results;
+  } catch (err) {
+    throw new Error(err.message);
   }
-
-  // return { message: "Books returned successfully" };
-
-  // Mark book as available
-  await Book.update({ available: true }, { where: { id: book_id } });
-
-  // Check for reservations
-  const reservation = await Reservation.findOne({ where: { book_id: book_id, status: "Pending" } });
-  if (reservation) {
-    await notificationService.createNotification(
-      reservation.user_id,
-      `The book you reserved "${book_id}" is now available.`
-    );
-    reservation.status = "Fulfilled";
-    await reservation.save();
-  }
-
-  return returnBooks;
 };
+
+
+
+// services/borrowingService.js
+exports.getBorrowedHistory = async (user_id) => {
+  const history = await Borrow.findAll({
+    where: { user_id },
+    include: [
+      {
+        model: Book,
+        as: "book", // Alias to reference the Book model
+        attributes: ["title", "cover_url"], // Book's title and cover_url
+        include: [
+          {
+            model: Author,
+            as: "author", // Alias to include the Author model
+            attributes: ["name"], // Fetch the author's name
+          },
+        ],
+      },
+      {
+        model: User, // Include User model to fetch name/email
+        as: "user",
+        attributes: ["first_name", "last_name", "email"], // Or any other fields you want
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+
+  return history;
+};
+
+
 
 exports.notifyUsers = async () => {
   const overdueBooks = await db.Borrow.findAll({
@@ -126,34 +266,14 @@ exports.deleteBorrow = async (borrow_id) => {
   return { message: "Borrow record deleted successfully" };
 };
 
-// Get All Borrowed Books
-exports.getAllBorrowedBooks = async () => {
-  return await Borrow.findAll({
-    include: [
-      { model: User, as: "user", attributes: ["user_id", "first_name", "email"] },
-      { model: Book, as: "book", attributes: ["book_id", "title", "author_id"] }
-    ]
-  });
-};
 
-exports.getBorrowById = async (borrow_id) => {
-  const borrow = await Borrow.findByPk(borrow_id, {
-    include: [
-      { model: User, as: "user", attributes: ["user_id", "first_name", "email"] },
-      { model: Book, as: "book", attributes: ["book_id", "title", "author_id"] }
-    ]
-  });
-
-  if (!borrow) throw new Error("Borrow record not found");
-  return borrow;
-};
 // Get User Borrow History
-exports.getUserBorrowHistory = async (user_id) => {
-  return await Borrow.findAll({
-    where: { user_id },
-    include: [{ model: Book, as: "book", attributes: ["book_id", "title"] }]
-  });
-};
+// exports.getUserBorrowHistory = async (user_id) => {
+//   return await Borrow.findAll({
+//     where: { user_id },
+//     include: [{ model: Book, as: "book", attributes: ["book_id", "title"] }]
+//   });
+// };
 
 // Check Overdue Books and Notify Users
 exports.checkOverdueBooks = async () => {

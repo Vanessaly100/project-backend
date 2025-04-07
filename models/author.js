@@ -5,6 +5,7 @@ class Author extends Model {
   static associate(models) {
     // Author has many Books
     Author.hasMany(models.Book, { foreignKey: "author_id", as: "books" });
+    
   }
 }
 

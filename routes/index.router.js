@@ -11,6 +11,7 @@ const recommendationRoutes = require("../routes/recommendation.routes");
 const notificationRoutes = require("../routes/notification.routes");
 const shareRoutes = require("../routes/share.routes");
 const reservationRoutes = require("../routes/reservation.routes");
+const  boroRoutes = require("../routes/boro");
 const router = express.Router();
 
 
@@ -37,6 +38,7 @@ router.use("/recommendations", recommendationRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/shares",  shareRoutes);
 router.use("/reservations", reservationRoutes);
+router.use("/borrow", boroRoutes);
 
 
 router.all("*", function (req, res) {

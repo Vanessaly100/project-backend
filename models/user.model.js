@@ -46,6 +46,11 @@ User.init(
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
+    rewarded: {
+  type: DataTypes.BOOLEAN,
+  defaultValue: false,
+}
+,
     profile_picture_url: {
       type: DataTypes.STRING,
     },
@@ -55,12 +60,12 @@ User.init(
     reading_preferences: {
       type: DataTypes.ARRAY(DataTypes.STRING),
     },
-    wishlist: {
-      type: DataTypes.ARRAY(DataTypes.UUID),
-    },
-    borrow_history: {
-      type: DataTypes.ARRAY(DataTypes.UUID),
-    },
+    // wishlist: {
+    //   type: DataTypes.ARRAY(DataTypes.UUID),
+    // },
+    // borrow_history: {
+    //   type: DataTypes.ARRAY(DataTypes.UUID),
+    // },
     role: {
       type: DataTypes.STRING,
       allowNull: false,

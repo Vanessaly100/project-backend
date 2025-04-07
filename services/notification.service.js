@@ -1,6 +1,6 @@
 const { Notification, User, Book } = require("../models");
 const moment = require("moment");
-const {sendEmail} = require("../lib/email"); // Optional: If you still want email notifications
+const {sendEmail} = require("../lib/email"); 
 
 
 // Function to create a borrow notification
@@ -11,15 +11,13 @@ exports.createBorrowNotification = async (user_id, book_id, due_date) => {
     if (!user || !book) throw new Error("User or Book not found");
 
     const formattedDueDate = moment(due_date).format("dddd, MMMM Do YYYY");
-    const message = `📢 Reminder: Your borrowed book "${book.title}" is due on ${formattedDueDate}. Please return it on time.`;
+    const message = ` Reminder: Your borrowed book "${book.title}" is due on ${formattedDueDate}. Please return it on time.`;
 
-    // Save notification in DB
     await Notification.create({ user_id, book_id, message, notification_type: "borrow" });
 
-    // Send email notification
     await sendEmail(user.email, "Book Borrowing Reminder", message);
 
-    console.log(`📧 Borrow reminder sent to ${user.email}`);
+    console.log(` Borrow reminder sent to ${user.email}`);
   } catch (error) {
     console.error("Error creating borrow notification:", error.message);
   }

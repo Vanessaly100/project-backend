@@ -1,11 +1,22 @@
 'use strict';
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
+const Book = require("./book");
+const User = require("./user.model");
 
 class Borrow extends Model {
   static associate(models) {
     Borrow.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
     Borrow.belongsTo(models.Book, { foreignKey: "book_id", as: "book" });
+
+    // Borrow.belongsTo(models.Reservation, {
+    //   foreignKey: "reservation_id",
+    //   as: "reservation",
+    // });
+    // Borrow.belongsTo(models.Notification, {
+    //   foreignKey: "notification_id",
+    //   as: "notification",
+    // });
   }
 }
 
@@ -19,12 +30,12 @@ Borrow.init(
     user_id: {
       type: DataTypes.UUID,
       allowNull: false,
-      references: { model: "Users", key: "user_id" },
+      references: { model: User, key: "user_id" },
     },
     book_id: {
       type: DataTypes.UUID,
       allowNull: false,
-      references: { model: "Books", key: "book_id" },
+      references: { model: Book, key: "book_id" },
       onDelete: "CASCADE",
     },
     borrow_date: {
@@ -34,7 +45,7 @@ Borrow.init(
     due_date: {
       type: DataTypes.DATE,
       allowNull: false,
-    }, 
+    },
     return_date: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -51,6 +62,7 @@ Borrow.init(
   {
     sequelize,
     modelName: "Borrow",
+    tableName: "Borrows",
   }
 );
 

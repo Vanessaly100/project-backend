@@ -1,13 +1,35 @@
-const { Book, Author, Category } = require("../models");
+const { Book, Author, Category,Borrow } = require("../models");
 
 const getAllBooks = async () => {
-  return await Book.findAll({
-    include: [
-      { model: Author, as: "author", attributes: [ "name"] },
-      { model: Category, as: "category", attributes: [ "name"] },
-    ],
-  });
+  try {
+    const books = await Book.findAll({
+      include: [
+        { model: Author, as: "author", attributes: ["name"] },
+        { model: Category, as: "category", attributes: ["name"] },
+        {
+          model: Borrow,
+          as: "borrows",
+          where: { status: "Borrowed" },
+          required: false, // allows books without borrows
+        },
+      ],
+    });
+
+    const booksWithAvailable = books.map((book) => {
+      const borrowedCount = book.borrows?.length || 0;
+      return {
+        ...book.toJSON(),
+        available_copies: book.total_copies - borrowedCount,
+      };
+    });
+
+    return booksWithAvailable;
+  } catch (error) {
+    console.error("Error fetching books:", error.message);
+    throw new Error("Could not fetch books");
+  }
 };
+
 
 const getBookById = async (book_id) => {
   return await Book.findByPk(book_id, {

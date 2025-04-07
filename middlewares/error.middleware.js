@@ -63,7 +63,14 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Catch-all for unexpected errors (Internal Server Error)
-  return res.status(500).json({ message: "An unexpected error occurred" });
+  const code = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  return res.status(code).json({
+    success: false,
+    message,
+    trace: err.stack,
+  });
 };
 
 module.exports = errorHandler;

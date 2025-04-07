@@ -33,10 +33,18 @@ module.exports = {
       publication_year: {
         type: Sequelize.INTEGER,
       },
-      available_copies: {
-        type: Sequelize.INTEGER,
-        defaultValue: 1,
-      },
+      totalCopies: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            defaultValue: 5, // Total number of copies for the book
+          },
+          
+          available_copies: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            defaultValue: 5,
+          },
+      
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

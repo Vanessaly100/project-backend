@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 
 const { User } = require("../models");
+const { Borrow, Book, Author } = require("../models");
 
 //  Hash Password Function
 exports.hashPassword = async (password) => {
@@ -9,11 +10,24 @@ exports.hashPassword = async (password) => {
 
 exports.updateUserProfile = async (user_id, updateData, isAdmin) => {
   const user = await User.findByPk(user_id);
-  if (!user) return null;
+  if (!user) throw new Error("User not found");
 
-  // Restrict non-admins from changing sensitive fields
+  // If profilePhoto is passed, map it to the DB field
+  if (updateData.profilePhoto) {
+    updateData.profile_picture_url = updateData.profilePhoto;
+    delete updateData.profilePhoto;
+  }
+
+  // Restrict non-admins from editing sensitive fields
   if (!isAdmin) {
-    const allowedFields = ["name", "email", "password", "phone", "profilePhoto"];
+    const allowedFields = [
+      "first_name",
+      "last_name",
+      "email",
+      "location",
+      "reading_preferences",
+      "profile_picture_url",
+    ];
     Object.keys(updateData).forEach((key) => {
       if (!allowedFields.includes(key)) delete updateData[key];
     });
@@ -118,6 +132,40 @@ exports.updateUserPassword = async (userId, oldPassword, newPassword) => {
 
 
 
+////TESTED AND IS WORKING
+
+exports.getUserProfile = async (user_id) => {
+  const user = await User.findByPk(user_id, {
+    attributes: { exclude: ["password"] },
+  });
+  if (!user) throw new Error("User not found");
+  return user;
+};
 
 
+exports.getUserBorrowedBooks = async (user_id) => {
+  try {
+    const borrowedBooks = await Borrow.findAll({
+      where: { user_id, status: "Borrowed" },
+      include: [
+        {
+          model: Book,
+          as: "book",
+          attributes: ["title", "author_id", "cover_url"],
+          include: [
+            {
+              model: Author,
+              as: "author",
+              attributes: ["name"],
+            },
+          ],
+        },
+      ],
+    });
 
+    console.log("Borrowed Books Query:", borrowedBooks);
+    return borrowedBooks;
+  } catch (error) {
+    throw new Error("Error fetching borrowed books in service.");
+  }
+};

@@ -3,12 +3,15 @@ const router = express.Router();
 const borrowController = require("../controllers/borrow.controller");
 const { authenticateUser, authorizeAdmin, } = require("../middlewares/auth.middleware");
 
-router.post("/:borrow_id", authenticateUser, borrowController.borrowBooks);
+router.post("/", authenticateUser, borrowController.borrowBooks);
 router.get("/borrowed-books", authenticateUser, authorizeAdmin, borrowController.getAllBorrows);
-
+router.get("/history", authenticateUser, borrowController.getBorrowHistory);
+router.put("/return", authenticateUser, borrowController.returnBooks);
 router.get("/:borrow_id", borrowController.getBorrowById);
-router.put("/:borrowId/return", authenticateUser, authorizeAdmin, borrowController.returnBook);
-router.get("/:userId/history", authenticateUser, borrowController.getUserBorrowHistory);
+
+
+
+
 router.put("/:userId/history", authenticateUser, borrowController.updateBorrow);
 router.delete("/:userId/history", authenticateUser, borrowController.deleteBorrow);
 
@@ -18,7 +21,10 @@ router.post("/notify-users", authenticateUser, authorizeAdmin, borrowController.
 
 router.get("/overdue-books", borrowController.getOverdueBooks);
 
+router.get("/user/:userId", authenticateUser, borrowController.getUserBorrows);
 
+// In your routes.js
+router.get("/my-borrows", authenticateUser, borrowController.getMyBorrows);
  
 module.exports = router;
 

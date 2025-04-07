@@ -1,10 +1,11 @@
 
 const userService = require("../services/user.service");
 const pointsService = require("../services/points.service");
+const { Borrow, Book, User, Author } = require("../models");
 
 
 //  Users can fetch their own details (by ID, name, or email)
-exports.getUserProfile = async (req, res) => {
+exports.getUserProfileById = async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.user_id); // Get logged-in user by ID
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -58,26 +59,29 @@ exports.updateUser = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const userId = req.user.user_id; // Assuming user ID is stored in req.user after authentication
-    let updateData = req.body;
+    const user_id = req.user.id;
+    const isAdmin = req.user.role === "admin";
 
-    // Check if a file is uploaded
+    const updateData = req.body;
+
+    // Multer + Cloudinary: the uploaded file's URL is in req.file.path
     if (req.file) {
-      updateData.profilePhoto = req.file.path; // Save file path or URL from Cloudinary
+      updateData.profile_picture_url = req.file.path; // This is the Cloudinary URL
     }
 
-    const isAdmin = req.user.role === "admin"; // Adjust this based on your role system
+    const updatedUser = await userService.updateUserProfile(
+      user_id,
+      updateData,
+      isAdmin
+    );
 
-    const updatedUser = await userService.updateUserProfile(userId, updateData, isAdmin);
-
-    if (!updatedUser) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.json({ message: "Profile updated successfully", user: updatedUser });
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Something went wrong" });
   }
 };
 
@@ -116,22 +120,6 @@ exports.changeMembership = async (req, res) => {
 
 
 
-
-
-// Award points for borrowing books
-exports.borrowBook = async (req, res) => {
-  try {
-    const { userId, bookId } = req.body;
-    // Logic to borrow book (handle in another service/controller)
-    
-    // Award points
-    const newPoints = await pointsService.addPoints(userId, 10); // Example: 10 points per book
-
-    res.json({ message: "Book borrowed successfully", points: newPoints });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
 
 // Redeem points
 exports.redeemPoints = async (req, res) => {
@@ -182,3 +170,40 @@ exports.updatePassword = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+
+
+
+////TESTED AND IS WORKING
+ exports.getProfile = async (req, res) => {
+   try {
+     const user = await userService.getUserProfile(req.user.id); // Access user_id from the decoded token
+     res.json(user);
+   } catch (error) {
+     res.status(404).json({ error: error.message });
+   }
+ };
+
+
+exports.getUserBorrowedBooks = async (req, res) => {
+  try {
+    const user_id = req.user.id; // Extract user_id from token
+    console.log("User ID:", user_id);
+
+    // Delegate business logic to the service
+    const borrowedBooks = await userService.getUserBorrowedBooks(user_id);
+
+    if (borrowedBooks.length === 0) {
+      return res.status(404).json({ message: "No borrowed books found." });
+    }
+
+    res.json(borrowedBooks);
+  } catch (error) {
+    console.error("Error fetching borrowed books:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while fetching borrowed books." });
+  }
+};
+
+

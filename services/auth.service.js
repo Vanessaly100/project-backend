@@ -41,24 +41,18 @@ const registerAdmin = async ({ first_name, last_name, email, password, adminSecr
 
 //  Login for both users & admins
 const loginUser = async ({ email, password }) => {
-  const user = await User.findOne({ where: { email } });
-
   if (!email || !password) {
-    return res.status(400).json({ message: "Email and password are required" });
+    throw new Error("Email and password are required");
   }
+
+  const user = await User.findOne({ where: { email } });
   if (!user) throw new Error("Invalid email or password");
 
   const isMatch = await bcrypt.compare(password, user.password_hash);
   if (!isMatch) throw new Error("Invalid email or password");
 
-  const token = jwt.sign(
-    { id: user.user_id, role: user.role },
-    SECRET_KEY,
-    { expiresIn: "7d" }
-  );
-
-console.log(token)
-  return { token, role: user.role }; 
+  return user; // 👈 just return user, no token
 };
+
 
 module.exports = { registerUser, registerAdmin, loginUser  };

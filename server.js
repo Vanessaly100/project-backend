@@ -20,18 +20,19 @@ app.set("io", io);
 
 // CORS Configuration (Allow Frontend & Cookies)
 // const FRONTEND_ORIGIN = "http://localhost:3000";
-// const FRONTEND_ORIGIN = "http://localhost:5173";
-const FRONTEND_ORIGIN = "http://localhost:5174";
+const FRONTEND_ORIGIN = "http://localhost:5173";
+// const FRONTEND_ORIGIN = "http://localhost:5174";
 
-app.use(
-  cors({
-    origin: FRONTEND_ORIGIN, 
-    credentials: true,       
-  })
-); 
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+  })
+); 
 app.use(compression());
 app.use(helmet());
 app.use(cookieParser());
