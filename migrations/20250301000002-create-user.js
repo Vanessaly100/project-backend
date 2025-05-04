@@ -14,6 +14,11 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
+      phone_number: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        unique: true,
+      },
       email: {
         type: Sequelize.STRING,
         allowNull: false,
@@ -35,6 +40,9 @@ module.exports = {
       profile_picture_url: {
         type: Sequelize.STRING,
       },
+      profilePicturePublicId: {
+        type: Sequelize.STRING,
+      },
       location: {
         type: Sequelize.STRING,
       },
@@ -42,9 +50,9 @@ module.exports = {
         type: Sequelize.ARRAY(Sequelize.STRING),
       },
       rewarded: {
-  type: Sequelize.BOOLEAN,
-  defaultValue: false,
-},
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
 
       // wishlist: {
       //   type: Sequelize.ARRAY(Sequelize.UUID),
@@ -52,7 +60,7 @@ module.exports = {
       // borrow_history: {
       //   type: Sequelize.ARRAY(Sequelize.UUID),
       // },
-      
+
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

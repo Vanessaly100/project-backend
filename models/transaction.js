@@ -2,7 +2,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
-
+module.exports = (sequelize, DataTypes) => {
   class Transaction extends Model {
     static associate(models) {
       Transaction.belongsTo(models.User, { foreignKey: "user_id" });
@@ -52,4 +52,5 @@ const sequelize = require("../config/database");
     }
   );  
 
- module.exports = Transaction
+return Transaction
+}

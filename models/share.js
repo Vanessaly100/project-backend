@@ -3,7 +3,7 @@ const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
 
-
+module.exports = (sequelize, DataTypes) => {
   class Share extends Model {
     static associate(models) {
       Share.belongsTo(models.User, { foreignKey: "user_id" });
@@ -48,4 +48,5 @@ const sequelize = require("../config/database");
     }
   );
 
- module.exports = Share
+return Share
+}

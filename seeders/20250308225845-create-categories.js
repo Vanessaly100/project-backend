@@ -4,7 +4,7 @@ module.exports = {
   up: async (queryInterface) => {
     await queryInterface.bulkInsert('Categories', [
       {
-        category_id: uuidv4(),
+        category_id: uuidv4(), 
         name: "Fiction",
         description: "Novels and stories that contain events invented by the author.",
         createdAt: new Date(),

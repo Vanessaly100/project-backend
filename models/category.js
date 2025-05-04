@@ -1,6 +1,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
+module.exports = (sequelize, DataTypes) => {
 class Category extends Model {
   static associate(models) {
     Category.hasMany(models.Book, { foreignKey: "category_id", as: "books" });
@@ -26,8 +27,9 @@ Category.init(
   {
     sequelize,
     modelName: "Category",
-    tableName: "categories",
+    tableName: "Categories",
   }
 );
 
-module.exports = Category;
+return Category;
+}

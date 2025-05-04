@@ -2,6 +2,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
+module.exports = (sequelize, DataTypes) => {
 class Review extends Model {
   static associate(models) {
     // A Review belongs to a User and a Book
@@ -42,4 +43,5 @@ Review.init(
   }
 );
 
-module.exports = Review;
+return Review;
+}

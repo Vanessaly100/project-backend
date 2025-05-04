@@ -2,7 +2,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
-
+module.exports = (sequelize, DataTypes) => {
   class Recommendation extends Model {
     static associate(models) {
       Recommendation.belongsTo(models.User, { foreignKey: "user_id" });
@@ -36,4 +36,5 @@ const sequelize = require("../config/database");
     }
   ); 
 
- module.exports = Recommendation
+return Recommendation
+}

@@ -2,6 +2,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
+module.exports = (sequelize, DataTypes) => {
 class Reservation extends Model {
   static associate(models) {
     Reservation.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
@@ -39,4 +40,5 @@ Reservation.init(
   }
 );
 
-module.exports = Reservation;
+return  Reservation;
+}

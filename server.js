@@ -20,8 +20,8 @@ app.set("io", io);
 
 // CORS Configuration (Allow Frontend & Cookies)
 // const FRONTEND_ORIGIN = "http://localhost:3000";
-const FRONTEND_ORIGIN = "http://localhost:5173";
 // const FRONTEND_ORIGIN = "http://localhost:5174";
+const FRONTEND_ORIGIN = "http://localhost:5173";
 
 
 
@@ -66,6 +66,8 @@ app.use((req, res, next) => {
 app.get("/test", (req, res) => {
   res.json({ message: "Server is running!" });
 });
+
+
 
 
 app.use(errorMiddleware);

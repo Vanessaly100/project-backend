@@ -2,6 +2,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
+module.exports = (sequelize, DataTypes) => {
 class Notification extends Model {
   static associate(models) {
     Notification.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
@@ -51,4 +52,5 @@ Notification.init(
   }
 );
 
-module.exports = Notification;
+return Notification;
+}

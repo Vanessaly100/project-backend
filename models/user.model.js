@@ -1,6 +1,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
+module.exports = (sequelize, DataTypes) => {
 class User extends Model {
   static associate(models) {
     User.hasMany(models.Transaction, { foreignKey: "user_id", as: "transactions" });
@@ -28,6 +29,11 @@ User.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    phone_number: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -47,11 +53,13 @@ User.init(
       defaultValue: 0,
     },
     rewarded: {
-  type: DataTypes.BOOLEAN,
-  defaultValue: false,
-}
-,
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     profile_picture_url: {
+      type: DataTypes.STRING,
+    },
+    profilePicturePublicId: {
       type: DataTypes.STRING,
     },
     location: {
@@ -81,4 +89,5 @@ User.init(
   }
 );
 
-module.exports = User;
+return User;
+}

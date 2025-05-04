@@ -1,14 +1,28 @@
 const Joi = require("joi");
 
-const registerValidation = Joi.object({
-  name: Joi.string().min(3).max(30).required(),
+const userRegistrationSchema = Joi.object({
+  first_name: Joi.string().min(2).max(50).required(),
+  last_name: Joi.string().min(2).max(50).required(),
+  phone_number: Joi.string()
+    .pattern(/^[0-9]+$/)
+    .min(7)
+    .max(15)
+    .required(),
   email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
+  password: Joi.string().min(6).max(100).required(),
+  profile_picture_url: Joi.string().uri(),
+  profilePicturePublicId: Joi.string(),
+  location: Joi.string().max(100),
+  reading_preferences: Joi.array().items(Joi.string().max(50)),
 });
 
-const loginValidation = Joi.object({
+// User Login Schema
+const userLoginSchema = Joi.object({
   email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
+  password: Joi.string().min(6).max(100).required(),
 });
 
-module.exports = { registerValidation, loginValidation };
+module.exports = {
+  userRegistrationSchema,
+  userLoginSchema,
+};

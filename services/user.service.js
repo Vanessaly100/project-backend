@@ -1,171 +1,214 @@
 const bcrypt = require("bcryptjs");
+const { User, Borrow, Book, Author } = require("../models");
+const { Op } = require("sequelize");
+// const cloudinary = require("../middlewares/uploadMiddleware");
+const cloudinary = require("../config/cloudinary");
+const {
+  BadRequestException,
+  NotFoundException,
+  InternalServerErrorException,
+} = require("../lib/errors.definitions");
 
-const { User } = require("../models");
-const { Borrow, Book, Author } = require("../models");
-
-//  Hash Password Function
+// Hash Password Function
 exports.hashPassword = async (password) => {
-  return await bcrypt.hash(password, 10);
+  try {
+    return await bcrypt.hash(password, 10);
+  } catch (error) {
+    throw new InternalServerErrorException("Error hashing password");
+  }
 };
 
-exports.updateUserProfile = async (user_id, updateData, isAdmin) => {
+// Get User by ID
+exports.getUserById = async (user_id) => {
   const user = await User.findByPk(user_id);
-  if (!user) throw new Error("User not found");
-
-  // If profilePhoto is passed, map it to the DB field
-  if (updateData.profilePhoto) {
-    updateData.profile_picture_url = updateData.profilePhoto;
-    delete updateData.profilePhoto;
-  }
-
-  // Restrict non-admins from editing sensitive fields
-  if (!isAdmin) {
-    const allowedFields = [
-      "first_name",
-      "last_name",
-      "email",
-      "location",
-      "reading_preferences",
-      "profile_picture_url",
-    ];
-    Object.keys(updateData).forEach((key) => {
-      if (!allowedFields.includes(key)) delete updateData[key];
-    });
-  }
-
-  await user.update(updateData);
+  if (!user) throw new NotFoundException("User not found");
   return user;
 };
- 
 
-// Fetch user by ID
-exports.getUserById = async (user_id) => {
-  return await User.findByPk(user_id);
-};
-
-//  Fetch user by name, email, or ID
+// Find User by ID, name, or email
 exports.findUser = async ({ user_id, name, email }) => {
   const query = {};
   if (user_id) query.user_id = user_id;
   if (name) query.name = name;
   if (email) query.email = email;
 
-  return await User.findOne({ where: query });
-};
-
-//  Fetch all users (Admin Only)
-exports.getAllUsers = async () => {
-  return await User.findAll();
-};
-
-//  Update user details (Admin Only)
-exports.updateUser = async (user_id, updateData) => {
-  const user = await User.findByPk(user_id);
-  if (!user) return null;
-
-  await user.update(updateData);
-  return user;
-};
-
-//  Delete user (Admin Only)
-exports.deleteUser = async (user_id) => {
-  const user = await User.findByPk(user_id);
-  if (!user) return false;
-
-  await user.destroy();
-  return true;
-};
-
-
-//  Change Membership Type
-exports.changeMembership = async (userId, membership_type) => {
   try {
-    console.log("Changing membership for user:", userId); // Debugging log
-    const user = await User.findByPk(userId);
-
-    if (!user) return { error: "User not found" };
-
-    user.membership_type = membership_type;
-    await user.save();
-    return { success: "Membership updated successfully", user };
+    return await User.findOne({ where: query });
   } catch (error) {
-    console.error("Membership update error:", error);
-    return { error: "Internal Server Error" };
+    throw new InternalServerErrorException("Error finding user");
+  }
+};
+
+// Update User Profile
+
+
+exports.updateUserProfile = async (userId, updateData, file) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw new NotFoundException("User not found");
+
+  let profilePictureUrl = user.profile_picture_url;
+  let profilePicturePublicId = user.profile_picture_public_id;
+
+  if (file) {
+    // Delete the old picture from Cloudinary if it exists
+    if (profilePicturePublicId) {
+      await cloudinary.uploader.destroy(profilePicturePublicId);
+    }
+
+    // Upload the new picture to Cloudinary
+    const result = await cloudinary.uploader.upload(file.path);
+    profilePictureUrl = result.secure_url;
+    profilePicturePublicId = result.public_id;
+
+    // Update the fields related to the profile picture
+    updateData.profile_picture_url = profilePictureUrl;
+    updateData.profile_picture_public_id = profilePicturePublicId;
+  }
+
+  try {
+    await user.update(updateData);
+    return user;
+  } catch (error) {
+    console.error(error);
+    throw new InternalServerErrorException("Failed to update profile");
   }
 };
 
 
+exports.updateUserByAdmin = async (user_id, updateData) => {
+  const user = await User.findByPk(user_id);
+  if (!user) throw new NotFoundException("User not found");
+  return await user.update(updateData);
+    
+};
 
-// Reset Password (Forgot Password)
+
+
+
+// Get All Users with pagination, sorting, and filtering
+exports.getAllUsers = async ({
+  page = 1,
+  limit = 10,
+  sort = "createdAt",
+  order = "desc",
+  filter = "",
+}) => {
+  try {
+    const pageInt = parseInt(page);
+    const limitInt = parseInt(limit);
+
+    // Fetch users with pagination, sorting, and filtering
+    const users = await User.findAll({
+      where: {
+        [Op.or]: [
+          { first_name: { [Op.iLike]: `%${filter}%` } },
+          { last_name: { [Op.iLike]: `%${filter}%` } },
+          { email: { [Op.iLike]: `%${filter}%` } },
+        ],
+      },
+      order: [[sort, order]], // Sorting based on query parameters
+      limit: limitInt, // Limit the number of results
+      offset: (pageInt - 1) * limitInt, // Pagination offset
+    });
+
+    // Get total users count for pagination
+    const totalUsers = await User.count();
+
+    return { totalUsers, users };
+  } catch (error) {
+    throw new InternalServerErrorException(
+      "Error fetching users from the database"
+    );
+  }
+};
+
+// Delete User (Admin Only)
+exports.deleteUser = async (user_id) => {
+  const user = await User.findByPk(user_id);
+  if (!user) {
+    throw new NotFoundException("User not found");
+  }
+    await user.destroy();
+    return { message: "User deleted successfully" };
+};
+
+// Change Membership Type
+exports.changeMembership = async (userId, membership_type) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw new NotFoundException("User not found");
+
+  user.membership_type = membership_type;
+  try {
+    await user.save();
+    return { success: "Membership updated successfully", user };
+  } catch (error) {
+    throw new InternalServerErrorException("Failed to update membership");
+  }
+};
+
+// Reset User Password (Forgot Password)
 exports.resetUserPassword = async (email, newPassword) => {
   const user = await User.findOne({ where: { email } });
+  if (!user) throw new NotFoundException("User not found");
 
-  if (!user) return { error: "User not found" };
-
-  // Hash new password
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-  // Update user password
-  await user.update({ password: hashedPassword });
-
-  return { success: "Password reset successfully" };
+  try {
+    await user.update({ password: hashedPassword });
+    return { success: "Password reset successfully" };
+  } catch (error) {
+    throw new InternalServerErrorException("Failed to reset password");
+  }
 };
 
-// Update Password (Change Password)
+// Update User Password (Change Password)
 exports.updateUserPassword = async (userId, oldPassword, newPassword) => {
   const user = await User.findByPk(userId);
+  if (!user) throw new NotFoundException("User not found");
 
-  if (!user) return { error: "User not found" };
-
-  // Check if the old password matches
   const isMatch = await bcrypt.compare(oldPassword, user.password);
-  if (!isMatch) return { error: "Incorrect old password" };
+  if (!isMatch) throw new BadRequestException("Incorrect old password");
 
-  // Hash the new password
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-  // Update user password
-  await user.update({ password: hashedPassword });
-
-  return { success: "Password updated successfully" };
+  try {
+    await user.update({ password: hashedPassword });
+    return { success: "Password updated successfully" };
+  } catch (error) {
+    throw new InternalServerErrorException("Failed to update password");
+  }
 };
 
-
-
-////TESTED AND IS WORKING
-
+// Get User Profile (excluding password)
 exports.getUserProfile = async (user_id) => {
   const user = await User.findByPk(user_id, {
     attributes: { exclude: ["password"] },
   });
-  if (!user) throw new Error("User not found");
+  if (!user) throw new NotFoundException("User not found");
   return user;
 };
 
-
+// Get User Borrowed Books
 exports.getUserBorrowedBooks = async (user_id) => {
-  try {
-    const borrowedBooks = await Borrow.findAll({
-      where: { user_id, status: "Borrowed" },
-      include: [
-        {
-          model: Book,
-          as: "book",
-          attributes: ["title", "author_id", "cover_url"],
-          include: [
-            {
-              model: Author,
-              as: "author",
-              attributes: ["name"],
-            },
-          ],
-        },
-      ],
-    });
+  const borrowedBooks = await Borrow.findAll({
+    where: { user_id, status: "Borrowed" },
+    include: [
+      {
+        model: Book,
+        as: "book",
+        attributes: ["title", "author_id", "cover_url"],
+        include: [
+          {
+            model: Author,
+            as: "author",
+            attributes: ["name"],
+          },
+        ],
+      },
+    ],
+  });
 
-    console.log("Borrowed Books Query:", borrowedBooks);
-    return borrowedBooks;
-  } catch (error) {
-    throw new Error("Error fetching borrowed books in service.");
+  if (borrowedBooks.length === 0) {
+    throw new NotFoundException("No borrowed books found");
   }
+
+  return borrowedBooks;
 };

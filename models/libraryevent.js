@@ -2,7 +2,7 @@
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
 
-
+module.exports = (sequelize, DataTypes) => {
   class LibraryEvent extends Model {
     static associate(models) {
       LibraryEvent.belongsToMany(models.User, {
@@ -46,4 +46,5 @@ const sequelize = require("../config/database");
       timestamps: false,
     }
   );
-module.exports = LibraryEvent
+return LibraryEvent;
+}
