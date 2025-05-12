@@ -11,7 +11,7 @@ module.exports = {
         bio: "British author, best known for the Harry Potter series.",
         social_media: "@jk_rowling",
         contact: "+44 20 7946 0958",
-        email: "jkrowlings@official.com",
+        email: "jkrowlin@official.com",
         createdAt: new Date(),
         updatedAt: new Date(),
       },

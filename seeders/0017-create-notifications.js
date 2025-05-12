@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 const { v4: uuidv4 } = require("uuid");
 
@@ -16,21 +16,32 @@ module.exports = {
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
-    if (users.length === 0 || books.length === 0) {
-      throw new Error("Not enough users or books found. Run Users and Books seeders first.");
+    // Fetch real borrow IDs from BorrowedBooks table
+    const borrows = await queryInterface.sequelize.query(
+      `SELECT borrow_id FROM "Borrows";`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+
+    if (users.length === 0 || books.length === 0 || borrows.length === 0) {
+      throw new Error(
+        "Not enough users, books, or borrows found. Run all seeders first."
+      );
     }
 
-    // Helper function to get a random user ID
-    const getRandomUser = () => users[Math.floor(Math.random() * users.length)].user_id;
-
-    // Helper function to get a random book ID
-    const getRandomBook = () => books[Math.floor(Math.random() * books.length)].book_id;
+    // Helper functions
+    const getRandomUser = () =>
+      users[Math.floor(Math.random() * users.length)].user_id;
+    const getRandomBook = () =>
+      books[Math.floor(Math.random() * books.length)].book_id;
+    const getRandomBorrow = () =>
+      borrows[Math.floor(Math.random() * borrows.length)].borrow_id;
 
     const notifications = [
       {
         notification_id: uuidv4(),
         user_id: getRandomUser(),
         book_id: getRandomBook(),
+        borrow_id: getRandomBorrow(), // Reference to actual borrowed book
         message: "Your reserved book is now available for pickup.",
         type: "Reservation",
         createdAt: new Date(),
@@ -39,7 +50,9 @@ module.exports = {
         notification_id: uuidv4(),
         user_id: getRandomUser(),
         book_id: getRandomBook(),
-        message: "New books have been added to your favorite category: Science Fiction.",
+        borrow_id: getRandomBorrow(),
+        message:
+          "New books have been added to your favorite category: Science Fiction.",
         type: "Update",
         createdAt: new Date(),
       },
@@ -47,18 +60,20 @@ module.exports = {
         notification_id: uuidv4(),
         user_id: getRandomUser(),
         book_id: getRandomBook(),
+        borrow_id: getRandomBorrow(), // Reference to actual borrowed book
         message: "Reminder: Your borrowed book is due in 2 days.",
         type: "Reminder",
-        createdAt: new Date(), 
+        createdAt: new Date(),
       },
       {
         notification_id: uuidv4(),
         user_id: getRandomUser(),
         book_id: getRandomBook(),
+        borrow_id: getRandomBorrow(),
         message: "Your book review received a new reply.",
         type: "Review",
         createdAt: new Date(),
-      }
+      },
     ];
 
     await queryInterface.bulkInsert("Notifications", notifications);

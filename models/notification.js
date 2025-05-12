@@ -7,6 +7,11 @@ class Notification extends Model {
   static associate(models) {
     Notification.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
     Notification.belongsTo(models.Book, { foreignKey: "book_id", as: "book" });
+    Notification.belongsTo(models.Borrow, {
+      foreignKey: "borrow_id", // make sure you add this in your schema
+      as: "borrow",
+    });
+
   }
 }
 
@@ -29,9 +34,15 @@ Notification.init(
       references: { model: "Books", key: "book_id" },
       onDelete: "SET NULL",
     },
+    borrow_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: { model: "Borrows", key: "borrow_id" },
+      onDelete: "SET NULL",
+    },
     type: {
       type: DataTypes.ENUM("Review", "Borrow", "Return", "Overdue","Reminder", "Update", "Reservation","General"),
-      defaultValue: "General",
+      defaultValue: "General", 
     },
     message: {
       type: DataTypes.STRING,
@@ -41,10 +52,6 @@ Notification.init(
       type: DataTypes.ENUM("Unread", "Read"),
       defaultValue: "Unread",
     },
-    // created_at: {
-    //   type: DataTypes.DATE,
-    //   defaultValue: DataTypes.NOW,
-    // },
   },
   {
     sequelize,

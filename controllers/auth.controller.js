@@ -1,42 +1,32 @@
-
-const { registerUser, registerAdmin, loginUser  } = require("../services/auth.service");
+const {
+  registerUser,
+  registerAdmin,
+  loginUser,
+} = require("../services/auth.service");
 const sendTokenResponse = require("../lib/sendToken");
+const NotificationService = require("../services/notification.service");
+const asyncHandler = require("express-async-handler");
 
+// User Registration
+const register = asyncHandler(async (req, res) => {
+  const newUser = await registerUser(req.body);
+  await NotificationService.notifyNewUserRegistration(newUser);
+  sendTokenResponse(newUser, res, "User registered successfully");
+});
 
+// Admin Registration
+const registerAdminController = asyncHandler(async (req, res) => {
+  const newAdmin = await registerAdmin(req.body);
+  sendTokenResponse(newAdmin, res, "Admin registered successfully");
+});
 
-//  User Registration
-const register = async (req, res) => {
-  try {
-    const newUser = await registerUser(req.body);
-    sendTokenResponse(newUser, res, "User registered successfully");
-    // res.status(201).json({ message: "User registered successfully", user: newUser });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  } 
-};
+// User Login
+const login = asyncHandler(async (req, res) => {
+  const user = await loginUser(req.body);
+  sendTokenResponse(user, res, "Login successful");
+});
 
-//  Admin Registration
-const registerAdminController = async (req, res) => {
-  try {
-    const newAdmin = await registerAdmin(req.body);
-    sendTokenResponse(newAdmin, res, "Admin registered successfully");
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-
-
-const login = async (req, res) => {
-  try {
-    const user = await loginUser(req.body);
-    sendTokenResponse(user, res, "Login successful");
-  } catch (error) {
-    res.status(401).json({ message: error.message });
-  }
-};
-
-
+// Logout
 const logout = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
@@ -46,6 +36,9 @@ const logout = (req, res) => {
   res.status(200).json({ message: "Logged out successfully" });
 };
 
-
-module.exports = { register, registerAdminController, login , logout };
- 
+module.exports = {
+  register,
+  registerAdminController,
+  login,
+  logout,
+};

@@ -2,7 +2,6 @@ const authorService = require("../services/author.service");
 const asyncHandler = require("express-async-handler");
 const {
   NotFoundException,
-  InternalServerErrorException,
 } = require("../lib/errors.definitions");
 
 // Create a new author
@@ -11,22 +10,14 @@ const createAuthor = asyncHandler(async (req, res) => {
   res.status(201).json(newAuthor);
 });
 
-//  Get all authors with pagination, sorting, filtering
+
 const getAllAuthors = asyncHandler(async (req, res) => {
-  const {
-    page = 1,
-    limit = 10,
-    sort = "createdAt",
-    order = "ASC",
-    filter = "",
-  } = req.query;
-
-  const { totalAuthors, Authors } = await authorService.getAllAuthors(
-    { page, limit, sort, order, filter },
-    { attributes: ["author_id", "name"] }
-  );
-
-  res.json({ totalAuthors, Authors });
+  const result = await authorService.getAllAuthors(req.query);
+  
+    res.status(200).json({
+      authors: result.authors,
+      pagination: result.pagination,
+    });
 });
 
 //  Get author by name
@@ -62,7 +53,7 @@ const updateAuthor = asyncHandler(async (req, res) => {
   if (!updatedAuthor) {
     throw new NotFoundException("Author not found or update failed");
   }
-
+ 
   res.status(200).json(updatedAuthor);
 });
 

@@ -1,5 +1,5 @@
 'use strict';
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require("uuid");
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
@@ -15,19 +15,19 @@ module.exports = {
       { type: Sequelize.QueryTypes.SELECT }
     );
 
-    // Create a map of author names to their UUIDs
+    // Create a map of author names to their author_ids
     const authorMap = {};
-    authors.forEach(author => {
+    authors.forEach((author) => {
       authorMap[author.name] = author.author_id;
     });
 
-    // Create a map of category names to their UUIDs
+    // Create a map of category names to their category_ids
     const categoryMap = {};
-    categories.forEach(category => {
+    categories.forEach((category) => {
       categoryMap[category.name] = category.category_id;
     });
 
-
+    console.log("Seeding books with IDs:");
     // Define the books with the correct author_id from the map
     const books = [
       // Books by J.K. Rowling
@@ -233,13 +233,17 @@ module.exports = {
       },
     ];
 
- // Map each book to insert the correct author_id and category_id
-    const booksData = books.map(book => {
+    // Map each book to insert the correct author_id and category_id
+    const booksData = books.map((book) => {
       if (!authorMap[book.author]) {
-        throw new Error(`Author '${book.author}' not found in the Authors table.`);
+        throw new Error(
+          `Author '${book.author}' not found in the Authors table.`
+        );
       }
       if (!categoryMap[book.category]) {
-        throw new Error(`Category '${book.category}' not found in the Categories table.`);
+        throw new Error(
+          `Category '${book.category}' not found in the Categories table.`
+        );
       }
       return {
         book_id: uuidv4(),
@@ -250,16 +254,16 @@ module.exports = {
         category_id: categoryMap[book.category],
         publication_year: book.publication_year,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
     });
     // Insert books into the Books table
-    await queryInterface.bulkInsert('Books', booksData);
+    await queryInterface.bulkInsert("Books", booksData);
   },
 
   down: async (queryInterface) => {
-    await queryInterface.bulkDelete('Books', null, {});
-  }
+    await queryInterface.bulkDelete("Books", null, {});
+  },
 };
 
 

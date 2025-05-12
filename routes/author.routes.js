@@ -5,7 +5,7 @@ const { authenticateUser, authorizeAdmin, } = require("../middlewares/auth.middl
 const router = express.Router();
 
 
-router.get("/all", authenticateUser,authorController.getAllAuthors);
+router.get("/", authenticateUser,authorController.getAllAuthors);
 router.get("/:id", authenticateUser, authorController.getAuthorById);
 router.get("/name/:name", authenticateUser, authorController.getAuthorByName);
 

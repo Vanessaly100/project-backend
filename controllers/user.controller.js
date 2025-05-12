@@ -16,17 +16,12 @@ exports.getUserProfileById = asyncHandler(async (req, res, next) => {
 
 // Get All Users with pagination and filters
 exports.getAllUsers = asyncHandler(async (req, res) => {
-  const { page, limit, sort, order, filter } = req.query;
-
-  const { totalUsers, users } = await userService.getAllUsers({
-    page,
-    limit,
-    sort,
-    order,
-    filter,
-  });
-
-  res.json({ totalUsers, users });
+  const result = await userService.getAllUsers(req.query);
+    
+      res.status(200).json({
+        users: result.users,
+        pagination: result.pagination,
+      });
 });
 
 // Get User by Query (e.g., user_id, name, or email)
@@ -116,6 +111,17 @@ exports.adminUpdateUser = asyncHandler(async (req, res) => {
   });
 });
 
+
+exports.getUserDetails = asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+console.log("User ID from request params: ", userId);
+  const user = await userService.getUserDetailsById(userId);
+  console.log("User details fetched: ", user);
+
+  if (!user) throw new NotFoundException("User not found");
+
+  res.status(200).json(user);
+});
 
 // Delete User
 exports.deleteUser = asyncHandler(async (req, res, next) => {

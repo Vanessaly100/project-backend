@@ -1,5 +1,6 @@
-const { Category } = require("../models");
+const { Category, Book } = require("../models");
 const { Op } = require("sequelize");
+const { InternalServerErrorException } = require("../lib/errors.definitions");
 
 exports.createCategory = async (data) => {
   return await Category.create(data);
@@ -8,17 +9,16 @@ exports.createCategory = async (data) => {
 
 exports.getAllCategories = async ({
   page = 1,
-  limit = 10,
+  limit = 7,
   sort = "createdAt",
   order = "desc",
   filter = "",
 }) => {
-  try {
-    const pageInt = parseInt(page);
-    const limitInt = parseInt(limit);
 
-    // Fetch Category with pagination, sorting, and filtering
-    const Categories = await Category.findAll(
+    const pageInt = parseInt(page, 10); // Convert to integer
+    const limitInt = parseInt(limit, 10);
+
+    const categories = await Category.findAndCountAll(
       {
         where: {
           [Op.or]: [
@@ -38,16 +38,18 @@ exports.getAllCategories = async ({
       { include: [{ association: "books" }] }
     );
 
-    // Get total author count for pagination
-    const totalCategories = await Category.count();
+   const totalPages = Math.ceil(categories.count / limitInt);
 
-    return { totalCategories, Categories };
-  } catch (error) {
-    console.error(" Sequelize error in getAllAuthors:", error);
-    throw new InternalServerErrorException(
-      "Error fetching authors from the database"
-    );
-  }
+    return {
+      categories: categories.rows,
+      pagination: {
+        totalItems: categories.count,
+        currentPage: pageInt,
+        totalPages,
+        pageSize: limitInt,
+      },
+    };
+
 };
 
 
@@ -57,20 +59,24 @@ exports.getCategoryById = async (category_id) => {
   });
 };
 
-exports.updateCategory = async (category_id, updatedData) => {
-  console.log("Updating category with data:", updatedData);
+exports.updateCategoryById = async (category_id, updatedData) => {
   const category = await Category.findByPk(category_id);
   if (!category) return null;
   return await category.update(updatedData);
+}; 
+
+
+
+exports.deleteCategory = async (categoryId) => {
+  const booksUsingCategory = await Book.findAll({
+    where: { category_id: categoryId },
+  });
+
+  if (booksUsingCategory.length > 0) {
+    throw new Error(
+      "Cannot delete category: Books are still assigned to this category."
+    );
+  }
+  await Category.destroy({ where: { category_id: categoryId } });
+  return { message: "Category deleted successfully" };
 };
-
-
-
-exports.deleteCategory = async (category_id) => {
-  const category = await Category.findByPk(category_id);
-  if (!category) return null;
-  await category.destroy();
-  return category;
-};
-
-

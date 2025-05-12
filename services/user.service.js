@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const { User, Borrow, Book, Author } = require("../models");
+const { User, Borrow, Book, Author, Reservation } = require("../models");
 const { Op } = require("sequelize");
 // const cloudinary = require("../middlewares/uploadMiddleware");
 const cloudinary = require("../config/cloudinary");
@@ -79,7 +79,6 @@ exports.updateUserByAdmin = async (user_id, updateData) => {
   const user = await User.findByPk(user_id);
   if (!user) throw new NotFoundException("User not found");
   return await user.update(updateData);
-    
 };
 
 
@@ -88,17 +87,17 @@ exports.updateUserByAdmin = async (user_id, updateData) => {
 // Get All Users with pagination, sorting, and filtering
 exports.getAllUsers = async ({
   page = 1,
-  limit = 10,
+  limit = 5,
   sort = "createdAt",
   order = "desc",
   filter = "",
 }) => {
-  try {
-    const pageInt = parseInt(page);
-    const limitInt = parseInt(limit);
+ 
+   const pageInt = parseInt(page, 10); // Convert to integer
+   const limitInt = parseInt(limit, 10);
 
     // Fetch users with pagination, sorting, and filtering
-    const users = await User.findAll({
+    const users = await User.findAndCountAll({
       where: {
         [Op.or]: [
           { first_name: { [Op.iLike]: `%${filter}%` } },
@@ -106,22 +105,42 @@ exports.getAllUsers = async ({
           { email: { [Op.iLike]: `%${filter}%` } },
         ],
       },
-      order: [[sort, order]], // Sorting based on query parameters
-      limit: limitInt, // Limit the number of results
-      offset: (pageInt - 1) * limitInt, // Pagination offset
+      order: [[sort, order.toUpperCase() === "DESC" ? "DESC" : "ASC"]],
+      limit: limitInt,
+      offset: (pageInt - 1) * limitInt,
     });
 
-    // Get total users count for pagination
-    const totalUsers = await User.count();
+   const totalPages = Math.ceil(users.count / limitInt);
 
-    return { totalUsers, users };
-  } catch (error) {
-    throw new InternalServerErrorException(
-      "Error fetching users from the database"
-    );
-  }
+    return {
+      users: users.rows,
+      pagination: {
+        totalItems: users.count,
+        currentPage: pageInt,
+        totalPages,
+        pageSize: limitInt,
+      },
+    };
+}
+
+
+exports.getUserDetailsById = async (userId) => {
+  return await User.findByPk(userId, {
+    attributes: { exclude: ["password_hash"] },
+    include: [
+      {
+        model: Borrow,
+        as: "borrows",
+        include: [{ model: Book, as: "book" }],
+      },
+      {
+        model: Reservation,
+        as: "reservations",
+        include: [{ model: Book, as: "book" }],
+      },
+    ],
+  });
 };
-
 // Delete User (Admin Only)
 exports.deleteUser = async (user_id) => {
   const user = await User.findByPk(user_id);

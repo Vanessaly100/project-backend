@@ -9,6 +9,12 @@ router.put("/update-profile",authenticateUser,upload.single("profilePicture"),us
 router.get("/profile", authenticateUser, userController.getProfile);
 router.get("/all",authenticateUser,authorizeAdmin,userController.getAllUsers);
 router.get("/fetch", authenticateUser, userController.getUserByQuery);
+router.get(
+  "/:id/details",
+  authenticateUser,
+  authorizeAdmin,
+  userController.getUserDetails
+);
 router.post("/reset-password",authenticateUser, userController.resetPassword); 
 router.put("/update-password/:userId",authenticateUser, userController.updatePassword); 
 

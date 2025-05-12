@@ -12,9 +12,9 @@ const { authenticateUser, authorizeAdmin,} = require("../middlewares/auth.middle
 
 
 router.get("/",authenticateUser, getAllCategories);
-router.get("/:category_id",authenticateUser, getCategoryById);
+router.get("/:id",authenticateUser, getCategoryById);
 router.post("/", authenticateUser, authorizeAdmin, createCategory);
-router.put("/:category_id",authenticateUser,authorizeAdmin, updateCategory);
-router.delete("/:category_id",authenticateUser, authorizeAdmin, deleteCategory);
+router.put("/:id",authenticateUser,authorizeAdmin, updateCategory);
+router.delete("/:id",authenticateUser, authorizeAdmin, deleteCategory);
 
 module.exports = router;

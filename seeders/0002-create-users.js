@@ -14,12 +14,11 @@ module.exports = {
         password_hash: await bcrypt.hash("password123", 10),
         membership_type: "premium",
         points: 120,
-        profile_picture_url: "https://example.com/john.jpg",
+        profile_picture_url:
+          "https://cdn.pixabay.com/photo/2014/04/03/10/41/person-311134_1280.png",
         location: "New York, USA",
         reading_preferences: ["Science Fiction", "Fantasy"],
-        rewarded: false, // ✅ Correct array format
-        // wishlist: Sequelize.literal("'{}'::uuid[]"), // ✅ Fix empty array issue
-        // borrow_history: Sequelize.literal("'{}'::uuid[]"), // ✅ Fix empty array issue
+        rewarded: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -32,11 +31,10 @@ module.exports = {
         membership_type: "standard",
         points: 80,
         rewarded: false,
-        profile_picture_url: "https://example.com/jane.jpg",
+        profile_picture_url:
+          "https://cdn.pixabay.com/photo/2014/04/03/10/41/person-311134_1280.png",
         location: "London, UK",
         reading_preferences: ["Mystery", "Thriller"],
-        // wishlist: Sequelize.literal("'{}'::uuid[]"), // ✅ Fix empty array issue
-        // borrow_history: Sequelize.literal("'{}'::uuid[]"), // ✅ Fix empty array issue
 
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -53,8 +51,6 @@ module.exports = {
         profile_picture_url: "https://example.com/michael.jpg",
         location: "Toronto, Canada",
         reading_preferences: ["Non-Fiction", "Biography"],
-        // wishlist: Sequelize.literal("'{}'::uuid[]"), // ✅ Fix empty array issue
-        // borrow_history: Sequelize.literal("'{}'::uuid[]"), // ✅ Fix empty array issue
         createdAt: new Date(),
         updatedAt: new Date(),
       },

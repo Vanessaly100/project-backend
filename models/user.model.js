@@ -12,7 +12,7 @@ class User extends Model {
     User.hasMany(models.Notification, { foreignKey: "user_id", as: "notifications" });
 
   } 
-}
+} 
 
 User.init(
   {
@@ -68,12 +68,7 @@ User.init(
     reading_preferences: {
       type: DataTypes.ARRAY(DataTypes.STRING),
     },
-    // wishlist: {
-    //   type: DataTypes.ARRAY(DataTypes.UUID),
-    // },
-    // borrow_history: {
-    //   type: DataTypes.ARRAY(DataTypes.UUID),
-    // },
+    
     role: {
       type: DataTypes.STRING,
       allowNull: false,

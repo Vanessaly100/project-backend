@@ -1,8 +1,6 @@
-'use strict';
+"use strict";
 const { Model, DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Book = require("./book");
-const User = require("./user.model");
 
 module.exports = (sequelize, DataTypes) => {
   class Borrow extends Model {
@@ -10,14 +8,6 @@ module.exports = (sequelize, DataTypes) => {
       Borrow.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
       Borrow.belongsTo(models.Book, { foreignKey: "book_id", as: "book" });
 
-      // Borrow.belongsTo(models.Reservation, {
-      //   foreignKey: "reservation_id",
-      //   as: "reservation",
-      // });
-      // Borrow.belongsTo(models.Notification, {
-      //   foreignKey: "notification_id",
-      //   as: "notification",
-      // });
     }
   }
 
@@ -31,12 +21,12 @@ module.exports = (sequelize, DataTypes) => {
       user_id: {
         type: DataTypes.UUID,
         allowNull: false,
-        references: { model: User, key: "user_id" },
+        references: { model: "Users", key: "user_id" },
       },
       book_id: {
         type: DataTypes.UUID,
         allowNull: false,
-        references: { model: Book, key: "book_id" },
+        references: { model: "Books", key: "book_id" },
         onDelete: "CASCADE",
       },
       borrow_date: {
@@ -52,13 +42,9 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       status: {
-        type: DataTypes.ENUM("Borrowed", "Returned", "Overdue"),
-        defaultValue: "Borrowed",
+        type: DataTypes.ENUM("borrowed", "returned", "overdue"),
+        defaultValue: "borrowed",
       },
-      // notified: {
-      //   type: DataTypes.BOOLEAN,
-      //   defaultValue: false,
-      // },
     },
     {
       sequelize,

@@ -1,148 +1,6 @@
 const { Book, Author, Category,Borrow,Genre } = require("../models");
-// const { Op } = require("sequelize");
 const sequelize = require("../config/database");
 const { Op, fn, col, cast, where } = require("sequelize");
-
-
-// const getAllBooks = async (
-  // {
-//   page = 1,
-//   limit = 10,
-//   sort = "createdAt",
-//   order = "desc",
-//   filter = "",
-// } = {}) => {
-  // try {
-  //   const pageInt = parseInt(page);
-  //   const limitInt = parseInt(limit);
-
-  //   const books = await Book.findAll({
-  //     include: [
-  //       { model: Author, as: "author", attributes: ["name"] },
-  //       { model: Category, as: "category", attributes: ["name"] },
-  //       {
-  //         model: Borrow,
-  //         as: "borrows",
-  //         where: { status: "Borrowed" },
-  //         required: false,
-  //       },
-  //     ],
-  //     where: {
-  //       [Op.or]: [
-  //         { title: { [Op.iLike]: `%${filter}%` } },
-  //         { genre: { [Op.iLike]: `%${filter}%` } },
-  //       ],
-  //     },
-  //     order: [[sort, order.toUpperCase() === "DESC" ? "DESC" : "ASC"]],
-  //     limit: limitInt,
-  //     offset: (pageInt - 1) * limitInt,
-  //   });
-
-//     if (!Array.isArray(books)) {
-//       console.log("BOOKS IS NOT AN ARRAY:", books);
-//       throw new Error("Unexpected data type for books");
-//     }
-
-//     console.log("Raw books result:", books); 
-
-//     const booksWithAvailable = books.map((book) => {
-//       const borrowedCount = book.borrows?.length || 0;
-//       return {
-//         ...book.toJSON(),
-//         available_copies: book.total_copies - borrowedCount,
-//       };
-//     });
-
-//     const totalBooks = await Book.count();
-
-//     return { booksWithAvailable, totalBooks };
-//   } catch (error) {
-//     console.error("Error fetching books:", error.message);
-//     throw new Error("Could not fetch books");
-//   }
-// };
-
-
-// const getAllBooks = async ({
-//   page = 1,
-//   limit = 10,
-//   sortBy = "title",
-//   sortOrder = "ASC",
-//   filters = {},
-// }) => {
-//   const offset = (page - 1) * limit;
-
-//   const whereClause = {
-//     [Op.or]: [
-//       { title: { [Op.iLike]: `%${filters}%` } },
-//       { genre: { [Op.iLike]: `%${filters}%` } },
-//       { "$author.name$": { [Op.iLike]: `%${filters}%` } },
-//       { publication_year: { [Op.iLike]: `%${filters}%` } },
-//     ],
-//   };
-//   const { count, rows: books } = await Book.findAndCountAll({
-//     where: whereClause,
-//     order: [[sortBy, sortOrder]],
-//     limit,
-//     offset,
-//     subQuery: false,
-//     include: [
-//       {
-//         model: Author,
-//         as: "author",
-//         attributes: ["author_id", "name"],
-//         required: false,
-//       },
-//       {
-//         model: Category,
-//         as: "category",
-//         attributes: ["category_id", "name"],
-//         required: false,
-//       },
-//       {
-//         model: Borrow,
-//         as: "borrows",
-//         where: { status: "borrowed" },
-//         required: false,
-//       },
-//     ],
-//   });
-
-//   const booksWithAvailability = books.map((book) => {
-//     const borrowedCopies = book.borrows ? book.borrows.length : 0;
-//     const availableCopies = book.totalCopies - borrowedCopies;
-
-//     return {
-//       id: book.book_id,
-//       title: book.title,
-//       author: book.author?.name || null,
-//       category: book.category?.name || null,
-//       CoverImage: book.cover_url,
-//       genre: book.genre,
-//       publishedYear: book.publication_year,
-//       totalCopies: book.totalCopies,
-//       borrowedCopies,
-//       availableCopies,
-//       isAvailable: availableCopies > 0,
-//       CreatedAt:book.createdAt,
-//       UpdatedAt:book.updatedAt,
-//     };
-//   });
-
-//   return {
-//     books: booksWithAvailability,
-//     pagination: {
-//       totalItems: count,
-//       totalPages: Math.ceil(count / limit),
-//       currentPage: page,
-//       itemsPerPage: limit,
-//       hasNextPage: page < Math.ceil(count / limit),
-//       hasPreviousPage: page > 1,
-//     },
-//   };
-// };
-
-
 
 
 const getAllBooks = async ({
@@ -214,8 +72,8 @@ const getAllBooks = async ({
       genres: book.genres.map((g) => g.name),
       publishedYear: book.publication_year,
       totalCopies: book.totalCopies,
-      borrowedCopies,
-      availableCopies,
+      borrowedCopies: book.totalCopies - book.available_copies,
+      availableCopies: book.available_copies,
       isAvailable: availableCopies > 0,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
@@ -236,12 +94,8 @@ const getAllBooks = async ({
 };
 
 
-
-
-
-
-
 const getBookById = async (book_id) => {
+  console.log("book result", book_id )
   return await Book.findByPk(book_id, {
     include: [
       { model: Author, as: "author", attributes: ["author_id", "name"] },
@@ -254,15 +108,65 @@ const createBook = async (bookData) => {
   return await Book.create(bookData);
 };
 
-const updateBook = async (book_id, bookData) => {
-  const book = await Book.findByPk(book_id);
-  if (!book) throw new Error("Book not found");;
-  return await book.update(bookData);
+const updateBook = async (bookId, bookData) => {
+    const {title,category,author,genre,cover_url,publishedYear,
+totalCopies,availableCopies,} = bookData;
+    const book = await Book.findByPk(bookId);
+    if (!book) {
+      throw new Error("Book not found");
+    }
+
+    // Find or create the author
+    const [authorRecord] = await Author.findOrCreate({
+      where: { name: author },
+    });
+
+    // Find or create the category
+    const [categoryRecord] = await Category.findOrCreate({
+      where: { name: category },
+    });
+
+    // Update the book fields
+    await book.update({
+      title,
+      cover_url,
+      publication_year: publishedYear,
+      totalCopies,
+      available_copies: availableCopies,
+      author_id: authorRecord.author_id,
+      category_id: categoryRecord.category_id,
+    });
+
+    // Update genre associations
+    if (Array.isArray(genre) && genre.length > 0) {
+      await book.setGenres(genre); // Accepts array of genre_ids
+      console.log(`Genres updated successfully for book: ${bookId}`);
+    }
+
+    // Fetch the fully updated book with associations
+    const updatedBook = await Book.findByPk(bookId, {
+      include: [
+        { 
+          model: Genre,
+          as: "genres",
+          through: { attributes: [] },
+        },
+        {
+          model: Author,as: "author",
+          attributes: ["name"],
+        },
+        {
+          model: Category,as: "category",
+          attributes: ["name"],
+        },
+      ],
+    });
+
+    return updatedBook;
 };
 
+
 const deleteBook = async (book_id) => {
-  console.log("Attempting to delete book:", book_id);
-  console.log("Searching for book_id:", book_id);
   const book = await Book.findByPk(book_id);
   if (!book) {
     console.error("Book not found:", book_id);

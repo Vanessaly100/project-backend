@@ -1,262 +1,299 @@
-const { Borrow, User, Book,Author, Reservation } = require("../models");
-const { Op } = require("sequelize");
+const { Borrow, User, Book, Author, Reservation } = require("../models");
+const { sequelize } = require("../models");
+const { Op, Sequelize } = require("sequelize");
 const { sendEmail } = require("../lib/email");
 const notificationService = require("../services/notification.service");
+const { InternalServerErrorException } = require("../lib/errors.definitions");
+const validator = require("validator");
 
+exports.getAllBorrowedBooks = async ({
+  page = 1,
+  limit = 10,
+  sort = "createdAt",
+  order = "desc",
+  filter = "",
+  status = "",
+}) => {
 
+    const pageInt = parseInt(page, 10); // Convert to integer
+    const limitInt = parseInt(limit, 10);
+    const searchFilter = filter
+      ? {
+          [Op.or]: [
+            Sequelize.where(Sequelize.col("user.first_name", "user.email"), {
+              [Op.iLike]: `%${filter}%`,
+            }),
+            Sequelize.where(Sequelize.col("book.title"), {
+              [Op.iLike]: `%${filter}%`,
+            }),
+          ],
+        }
+      : {};
 
+    let statusFilter = {};
+    if (status === "borrowed") {
+      statusFilter.return_date = null;
+    } else if (status === "overdue") {
+      statusFilter.return_date = null;
+      statusFilter.due_date = { [Op.lt]: new Date() };
+    } else if (status === "returned") {
+      statusFilter.return_date = { [Op.ne]: null };
+    }
 
-// Get All Borrowed Books
-exports.getAllBorrowedBooks = async () => {
-  return await Borrow.findAll({
-    include: [
-      { model: User, as: "user", attributes: ["user_id", "first_name", "email"] },
-      { model: Book, as: "book", attributes: ["book_id", "title", "author_id"] }
-    ]
-  });
+    // Merge both filters
+    const whereClause = {
+      ...searchFilter,
+      ...statusFilter,
+    };
+
+    // --- Query borrows ---
+    const borrows = await Borrow.findAndCountAll({
+      where: whereClause,
+      order: [
+        [sort || "createdAt", order?.toUpperCase() === "DESC" ? "DESC" : "ASC"],
+      ],
+      limit: limitInt,
+      offset: (pageInt - 1) * limitInt,
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["user_id", "first_name", "last_name", "email"],
+        },
+        {
+          model: Book,
+          as: "book",
+          attributes: ["book_id", "title", "author_id"],
+        },
+      ],
+    });
+
+const totalPages = Math.ceil(borrows.count / limitInt);
+
+return {
+  borrows: borrows.rows,
+  pagination: {
+    totalItems: borrows.count,
+    currentPage: pageInt,
+    totalPages,
+    pageSize: limitInt,
+  },
+};
 };
 
 exports.getBorrowById = async (borrow_id) => {
   const borrow = await Borrow.findByPk(borrow_id, {
     include: [
-      { model: User, as: "user", attributes: ["user_id", "first_name", "email"] },
-      { model: Book, as: "book", attributes: ["book_id", "title", "author_id"] }
-    ]
+      {
+        model: User,
+        as: "user",
+        attributes: ["user_id", "first_name", "email"],
+      },
+      {
+        model: Book,
+        as: "book",
+        attributes: ["book_id", "title", "author_id"],
+      },
+    ],
   });
 
   if (!borrow) throw new Error("Borrow record not found");
   return borrow;
 };
 
-
 exports.borrowBooks = async (user_id, bookIds) => {
+  const transaction = await sequelize.transaction();
+  const results = [];
+  const today = new Date();
+  const due_date = new Date(today);
+  due_date.setDate(today.getDate() + 3);
+
   try {
-    const results = [];
-
-    const today = new Date();
-    const due_date = new Date(today);
-    due_date.setDate(today.getDate() + 7);
-
-    const user = await User.findByPk(user_id);
+    const user = await User.findByPk(user_id, { transaction });
     if (!user) throw new Error("User not found");
 
     for (const bookId of bookIds) {
-      const book = await Book.findByPk(bookId);
+      try {
+        console.log("Processing book ID:", bookId);
 
-      if (!book) {
-        results.push({
-          bookId,
-          success: false,
-          message: `Book not found.`,
+        if (!validator.isUUID(bookId)) {
+          results.push({
+            bookId,
+            success: false,
+            message: "Invalid book ID format",
+          });
+          continue;
+        }
+
+        const book = await Book.findOne({
+          where: { book_id: bookId },
+          transaction,
         });
-        continue;
-      }
+        if (!book) {
+          results.push({
+            bookId,
+            success: false,
+            message: "Book not found",
+          });
+          continue;
+        }
 
-      //  Check 1: Already borrowed and not returned
-      const existingBorrow = await Borrow.findOne({
-        where: {
-          user_id,
-          book_id: bookId,
-          status: "Borrowed", // assuming "Borrowed" means not returned
-        },
-      });
+        const alreadyBorrowed = await Borrow.findOne({
+          where: {
+            user_id,
+            book_id: bookId,
+            status: "borrowed", 
+          },
+          transaction,
+        });
 
-      if (existingBorrow) {
+        if (alreadyBorrowed) {
+          results.push({
+            bookId: book.book_id,
+            title: book.title,
+            success: false,
+            message: `You already borrowed "${book.title}" and haven't returned it.`,
+          });
+          continue;
+        }
+
+        if (book.available_copies <= 0) {
+          results.push({
+            bookId: book.book_id,
+            title: book.title,
+            success: false,
+            message: `"${book.title}" is currently out of stock.`,
+          });
+          continue;
+        }
+
+        // Create borrow record
+        await Borrow.create(
+          {
+            user_id,
+            book_id: book.book_id,
+            due_date,
+            status: "borrowed", 
+          },
+          { transaction }
+        );
+
+        // Update copies and user points
+        await book.decrement("available_copies", { by: 1, transaction });
+        await user.increment("points", { by: 1, transaction });
+
+        if (user.points >= 100 && !user.rewarded) {
+          await user.update({ rewarded: true }, { transaction });
+        }
+
+        // Notifications outside the transaction
+        process.nextTick(async () => {
+          try {
+            await notificationService.createBorrowNotification(
+              user.user_id,
+              book.book_id,
+              due_date
+            );
+
+            await sendEmail(
+              user.email,
+              "Book Borrowed Successfully",
+              `You borrowed "${
+                book.title
+              }". Return by ${due_date.toDateString()}`
+            );
+          } catch (notifyErr) {
+            console.error("Notification error:", notifyErr);
+          }
+        });
+
         results.push({
-          bookId,
+          bookId: book.book_id,
           title: book.title,
-          success: false,
-          message: `You have already borrowed "${book.title}" and haven’t returned it yet.`,
+          success: true,
+          message: `You successfully borrowed "${
+            book.title
+          }". Return by ${due_date.toDateString()}`,
         });
-        continue;
-      }
-
-      // Check 2: No available copies
-      if (book.available_copies <= 0) {
+      } catch (bookErr) {
+        console.error(`Error processing book ${bookId}:`, bookErr.message);
         results.push({
           bookId,
-          title: book.title,
           success: false,
-          message: `"${book.title}" is currently out of stock. Please wait while we restock.`,
+          message: `Error processing book: ${bookErr.message}`,
         });
-        continue;
       }
+    }
 
-      //  Passed all checks – create borrow record
-      await Borrow.create({
+    await transaction.commit();
+    return {
+      message: "Borrow process completed",
+      results,
+    };
+  } catch (err) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+    console.error("Borrowing failed:", err.message);
+    throw new Error(err.message);
+  }
+};
+
+
+
+exports.returnBook = async (user_id, book_id) => {
+  try {
+    // Find the borrow record for the given user and book
+    const borrowRecord = await Borrow.findOne({
+      where: {
         user_id,
-        book_id: bookId,
-        due_date,
-        status: "Borrowed",
-      });
+        book_id,
+        status: "borrowed", // Only return borrowed books
+      },
+    });
 
-      // Decrease available copies
-      book.available_copies -= 1;
+    if (!borrowRecord) {
+      throw new Error("Borrow record not found or book not borrowed.");
+    }
+
+    // Update the borrow record to mark it as returned
+    borrowRecord.status = "returned";
+    borrowRecord.return_date = new Date();
+    await borrowRecord.save();
+
+    // Update the book's available copies
+    const book = await Book.findByPk(book_id);
+    if (book) {
+      book.available_copies += 1;
       await book.save();
+    }
 
-      // Add points
-      user.points += 1;
-      if (user.points >= 100 && !user.rewarded) {
-        user.rewarded = true;
-      }
-      await user.save();
+    // Trigger notifications
+    await notificationService.notifyBookReturned(
+      borrowRecord.user_id,
+      borrowRecord.book_id,
+      borrowRecord.return_date
+    );
 
-      //  Send notification
-      await notificationService.createBorrowNotification({
-        name: `${user.first_name} ${user.last_name}`,
-        email: user.email,
-        title: `You borrowed "${
-          book.title
-        }". Return by ${due_date.toDateString()}`,
-      });
-
-      // Send email
+    // Optionally, send a thank you email to the user
+    const user = await User.findByPk(user_id);
+    if (user) {
       await sendEmail(
         user.email,
-        "Book Borrowed Successfully",
-        `You borrowed "${book.title}". Return by ${due_date.toDateString()}`
+        "Thank you for returning the book",
+        `You have successfully returned the book.`
       );
-
-      results.push({
-        bookId,
-        title: book.title,
-        success: true,
-        message: `You successfully borrowed "${
-          book.title
-        }". Return by ${due_date.toDateString()}`,
-      });
     }
 
-    return results;
+    return {
+      success: true,
+      message: "Book returned successfully and notifications sent.",
+    };
   } catch (err) {
-    throw new Error(err.message);
+    console.error("Error in returning book:", err.message);
+    throw new Error("Error in returning book: " + err.message);
   }
 };
-
-
-
-// Return a Book
-exports.returnBooks = async (user_id, bookIds) => {
-  try {
-    const results = [];
-
-    const user = await User.findByPk(user_id);
-    if (!user) throw new Error("User not found");
-
-    for (const book_id of bookIds) {
-      const borrowRecord = await Borrow.findOne({
-        where: {
-          user_id,
-          book_id,
-          status: "Borrowed",
-        },
-      });
-
-      if (!borrowRecord) {
-        results.push({
-          bookId: book_id,
-          success: false,
-          message: "No borrowed record found for this book.",
-        });
-        continue;
-      }
-
-      //  Mark as returned
-      borrowRecord.status = "Returned";
-      await borrowRecord.save();
-
-      const book = await Book.findByPk(book_id);
-      if (book) {
-        book.available_copies += 1;
-        await book.save();
-      }
-
-      //  Add result
-      results.push({
-        bookId: book_id,
-        success: true,
-        message: "Book returned successfully",
-      });
-    }
-
-    return results;
-  } catch (err) {
-    throw new Error(err.message);
-  }
-};
-
-
-
-// services/borrowingService.js
-exports.getBorrowedHistory = async (user_id) => {
-  const history = await Borrow.findAll({
-    where: { user_id },
-    include: [
-      {
-        model: Book,
-        as: "book", // Alias to reference the Book model
-        attributes: ["title", "cover_url"], // Book's title and cover_url
-        include: [
-          {
-            model: Author,
-            as: "author", // Alias to include the Author model
-            attributes: ["name"], // Fetch the author's name
-          },
-        ],
-      },
-      {
-        model: User, // Include User model to fetch name/email
-        as: "user",
-        attributes: ["first_name", "last_name", "email"], // Or any other fields you want
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-  });
-
-  return history;
-};
-
-
-
-exports.notifyUsers = async () => {
-  const overdueBooks = await db.Borrow.findAll({
-    where: {
-      dueDate: { [Op.lt]: new Date() }, // Books past due date
-      status: "borrowed",
-      notified: false,
-    },
-    include: [{ model: db.User, attributes: ["id", "email", "name"] }, { model: db.Book, attributes: ["id", "title"] }],
-  });
-
-  for (const borrow of overdueBooks) {
-    const userId = borrow.User.id;
-    const bookId = borrow.Book.id;
-    const userName = borrow.User.name;
-    const bookTitle = borrow.Book.title;
-
-    const message = `Hello ${userName},\n\nYour borrowed book "${bookTitle}" is overdue. Please return it as soon as possible.\n\nThank you.`;
-
-    // Use notification service instead of sendEmail
-    await notificationService.createNotification(userId, bookId, message, "overdue");
-
-    // Mark as notified to prevent duplicate notifications
-    await borrow.update({ notified: true });
-  }
-
-  return overdueBooks;
-};
-
-// Update Borrow Record (Extend Due Date)
-exports.updateBorrow = async (borrow_id, newDueDate) => {
-  const borrow = await Borrow.findByPk(borrow_id);
-  if (!borrow) throw new Error("Borrow record not found");
-
-  borrow.due_date = newDueDate;
-  await borrow.save();
-
-  return borrow;
-};
-
 // Delete Borrow Record
 exports.deleteBorrow = async (borrow_id) => {
   const borrow = await Borrow.findByPk(borrow_id);
@@ -267,31 +304,109 @@ exports.deleteBorrow = async (borrow_id) => {
 };
 
 
-// Get User Borrow History
-// exports.getUserBorrowHistory = async (user_id) => {
-//   return await Borrow.findAll({
-//     where: { user_id },
-//     include: [{ model: Book, as: "book", attributes: ["book_id", "title"] }]
-//   });
-// };
+// Update Borrow Record (Extend Due Date)
+exports.updateBorrow = async (borrow_id, updatedData) => {
+  const borrow = await Borrow.findByPk(borrow_id);
+  if (!borrow) throw new Error("Borrow record not found");
 
-// Check Overdue Books and Notify Users
-exports.checkOverdueBooks = async () => {
-  const today = new Date();
+  await borrow.update(updatedData);
 
-  const overdueBorrows = await Borrow.findAll({
-    where: { due_date: { [Op.lt]: today }, status: "Borrowed" },
-  });
-
-  for (const borrow of overdueBorrows) {
-    await notificationService.createNotification(
-      borrow.user_id,
-      `Your borrowed book "${borrow.book_id}" is overdue. Please return it immediately.`
-    );
-
-    borrow.status = "Overdue";
-    await borrow.save();
-  }
+  return borrow;
 };
 
 
+//================
+exports.getActiveBorrows = async (user_id) => {
+  return Borrow.findAll({
+    where: {
+      user_id,
+      status: "borrowed",
+    },
+    include: [
+      {
+        model: Book,
+        as: "book",
+        attributes: ["book_id", "title", "author_id"],
+      },
+    ],
+  });
+};
+
+const applyFilters = (query, filters, status) => {
+  const {
+    search,
+    startBorrowDate,
+    endBorrowDate,
+    startDueDate,
+    endDueDate,
+    startReturnDate,
+    endReturnDate,
+  } = filters;
+
+  if (search) {
+    query.include[0].where = {
+      ...query.include[0].where,
+      title: { [Op.iLike]: `%${search}%` },
+    };
+  }
+
+  if (status === "returned") {
+    if (startReturnDate || endReturnDate) {
+      query.where.return_date = {};
+      if (startReturnDate)
+        query.where.return_date[Op.gte] = new Date(startReturnDate);
+      if (endReturnDate)
+        query.where.return_date[Op.lte] = new Date(endReturnDate);
+    }
+  } else {
+    if (startBorrowDate || endBorrowDate) {
+      query.where.borrow_date = {};
+      if (startBorrowDate)
+        query.where.borrow_date[Op.gte] = new Date(startBorrowDate);
+      if (endBorrowDate)
+        query.where.borrow_date[Op.lte] = new Date(endBorrowDate);
+    }
+
+    if (startDueDate || endDueDate) {
+      query.where.due_date = {};
+      if (startDueDate) query.where.due_date[Op.gte] = new Date(startDueDate);
+      if (endDueDate) query.where.due_date[Op.lte] = new Date(endDueDate);
+    }
+  }
+};
+
+const paginateAndSort = ({
+  page = 1,
+  limit = 5,
+  sortBy = "borrow_date",
+  order = "DESC",
+}) => {
+  const offset = (page - 1) * limit;
+  return { offset, limit: parseInt(limit), order: [[sortBy, order]] };
+};
+
+exports.getFilteredBorrows = async (user_id, status, filters) => {
+  const query = {
+    where: { user_id, status },
+    include: [{ model: Book, as: "book" }],
+    distinct: true,
+    ...paginateAndSort(filters),
+  };
+
+  applyFilters(query, filters, status);
+
+  return Borrow.findAndCountAll(query);
+};
+
+exports.getReturnHistory = async (user_id, filters) => {
+  const query = {
+    where: { user_id, status: "returned" },
+    include: [{ model: Book, as: "book" }],
+    distinct: true,
+    ...paginateAndSort(filters),
+  };
+
+  applyFilters(query, filters, "returned");
+
+  return Borrow.findAndCountAll(query);
+};

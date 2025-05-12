@@ -20,6 +20,12 @@ module.exports = {
         references: { model: "Books", key: "book_id" },
         onDelete: "CASCADE",
       },
+      borrow_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: "Borrows", key: "borrow_id" },
+        onDelete: "CASCADE",
+      },
       message: {
         type: Sequelize.STRING,
         allowNull: false,

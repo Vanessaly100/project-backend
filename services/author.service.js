@@ -13,44 +13,42 @@ const createAuthor = async (authorData) => {
 // Get All author with pagination, sorting, and filtering
 const getAllAuthors = async ({
   page = 1,
-  limit = 10,
+  limit = 5,
   sort = "createdAt",
   order = "desc",
   filter = "",
 }) => { 
-  try {
-    const pageInt = parseInt(page);
-    const limitInt = parseInt(limit);
+    const pageInt = parseInt(page, 10);// Convert to integer
+    const limitInt = parseInt(limit, 10);
 
     // Fetch author with pagination, sorting, and filtering
-    const Authors = await Author.findAll({
+    const authors = await Author.findAndCountAll({
       where: {
         [Op.or]: [
-          { name: { [Op.iLike]: `%${filter || ""}%` } },
-          { contact: { [Op.iLike]: `%${filter || ""}%` } },
-          { email: { [Op.iLike]: `%${filter || ""}%` } },
+          { name: { [Op.iLike]: `%${filter}%` } },
+          { contact: { [Op.iLike]: `%${filter}%` } },
+          { email: { [Op.iLike]: `%${filter}%` } },
         ],
       },
-      order: [
-        [sort || "createdAt", order?.toUpperCase() === "DESC" ? "DESC" : "ASC"],
-      ],
+      order: [[sort, order.toUpperCase() === "DESC" ? "DESC" : "ASC"]],
       limit: limitInt,
       offset: (pageInt - 1) * limitInt,
     });
+const totalPages = Math.ceil(authors.count / limitInt);
 
-    // Get total author count for pagination
-    const totalAuthors = await Author.count();
+    return {
+      authors: authors.rows,
+      pagination: {
+        totalItems: authors.count,
+        currentPage: pageInt,
+        totalPages,
+        pageSize: limitInt,
+      },
+    };
 
-    return { totalAuthors, Authors };
+  }; 
 
-  } catch (error) {
-    console.error(" Sequelize error in getAllAuthors:", error);
-    throw new InternalServerErrorException(
-      "Error fetching authors from the database"
-    );
-  }
-
-};
+ 
 
 
 const getAuthorById = async (author_id) => {
@@ -62,14 +60,14 @@ const updateAuthor = async (author_id, updatedData) => {
   if (!author) throw new Error("Author not found");
 
   return await author.update(updatedData);
-};
+}; 
 
 const deleteAuthor = async (author_id) => {
   const author = await Author.findByPk(author_id);
   if (!author) throw new Error("Author not found");
   await author.destroy();
   return { message: "Author deleted successfully" };
-}; 
+};  
 
 module.exports = {
   createAuthor,

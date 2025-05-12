@@ -1,4 +1,5 @@
 const { asyncWrapper } = require("../lib/utils");
+const asyncHandler = require("express-async-handler");
 const NotificationService = require("../services/notification.service");
 const { sendNotification } = require("../lib/socket");
 const {
@@ -6,207 +7,172 @@ const {
   NotFoundException,
   InternalServerErrorException,
 } = require("../lib/errors.definitions");
+const { Notification, Borrow } = require("../models");
 
-// Get all notifications (admin)
+
 exports.getAllNotifications = asyncWrapper(async (req, res) => {
-  try {
-    const notifications = await NotificationService.getAllNotifications();
-    res.status(200).json(notifications);
-  } catch (error) {
-    console.error("Error fetching notifications:", error.message);
-    throw new InternalServerErrorException("Failed to fetch notifications");
-  }
+  const result = await NotificationService.getFilteredNotifications(req.query);
+
+  res.status(200).json({
+    notifications: result.notifications,
+    pagination: result.pagination,
+  });
 });
 
 // Get notifications for a specific user
 exports.getUserNotifications = asyncWrapper(async (req, res) => {
-  try {
-    const { user_id } = req.params;
-    const notifications = await NotificationService.getUserNotifications(user_id);
-    if (!notifications.length) {
-      throw new NotFoundException("No notifications found for this user");
-    }
-    res.status(200).json(notifications);
-  } catch (error) {
-    console.error("Error fetching user notifications:", error.message);
-    throw new InternalServerErrorException("Failed to fetch user notifications");
-  }
+  const user_id = req.user.id;
+  const notifications = await NotificationService.getUserNotification(user_id);
+  res.status(200).json(notifications);
 });
 
-// Mark a notification as read
+// Get unread notification count for a user
+exports.getUnreadNotificationCount = asyncWrapper(async (req, res) => {
+  const user_id = req.user.id;
+  const count = await NotificationService.getUnreadNotificationCount(user_id);
+  res.status(200).json({ unreadCount: count });
+});
+
+// Mark a specific notification as read
 exports.markAsRead = asyncWrapper(async (req, res) => {
-  try {
-    const { notification_id } = req.params;
-    const notification = await NotificationService.markNotificationAsRead(notification_id);
-    if (!notification) {
-      throw new NotFoundException("Notification not found");
-    }
-    res.status(200).json(notification);
-  } catch (error) {
-    console.error("Error marking notification as read:", error.message);
-    throw new InternalServerErrorException("Failed to mark notification as read");
+  const { notification_id } = req.params;
+  const notification = await NotificationService.markNotificationAsRead(
+    notification_id
+  );
+  if (!notification) {
+    throw new NotFoundException("Notification not found");
   }
+  res.status(200).json(notification);
 });
 
-// Mark all notifications as read for a user
+// Mark all notifications for a user as read
 exports.markAllUserNotificationsAsRead = asyncWrapper(async (req, res) => {
-  try {
-    const user_id = req.user.id;
-    await NotificationService.markAllUserNotificationsAsRead(user_id);
-    res.status(200).json({ message: "All notifications marked as read" });
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error.message);
-    throw new InternalServerErrorException("Failed to mark all notifications as read");
-  }
+  const user_id = req.user.id;
+  await NotificationService.markAllUserNotificationsAsRead(user_id);
+  res.status(200).json({ message: "All notifications marked as read" });
 });
 
-// Notification controller
-exports.deleteNotification = asyncWrapper(async (req, res) => {
-  try {
-    const { notification_id } = req.params;
-
-    // Call the delete notification service
-    const deleted = await NotificationService.deleteNotification(notification_id);
-
-    if (!deleted) {
-      // If no notification was deleted, throw a NotFoundException
-      throw new NotFoundException("Notification not found");
-    }
-
-    res.status(200).json({ message: "Notification deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting notification:", error.message);
-
-    // Handle errors appropriately
-    if (error instanceof NotFoundException) {
-      res.status(404).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "Internal Server Error" });
-    }
+// Update a notification by ID
+exports.updateNotification = asyncWrapper(async (req, res) => {
+  const { id } = req.params;
+  const notification = await Notification.findByPk(id);
+  if (!notification) {
+    throw new NotFoundException("Notification not found");
   }
-});
-
-
-// Create Notification
-exports.createNotification = async (req, res) => {
-  try {
-    const { first_name, email, book_title, message, notification_type } = req.body;
-
-    // Call service to create notification
-    const notification = await NotificationService.createNotification(first_name, email, book_title, message, notification_type);
-
-    return res.status(201).json({
-      success: true,
-      message: "Notification created successfully",
-      data: notification,
-    });
-  } catch (error) {
-    console.error("Error creating notification:", error.message);
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-
-// Create an overdue notification
-exports.createOverdueNotification = asyncWrapper(async (req, res) => {
-  try {
-    const { user_id, book_id, user_name, book_title, user_email } = req.body;
-    if (!user_id || !book_id || !user_name || !book_title) {
-      throw new BadRequestException("Missing required fields");
-    }
-
-    const notification = await NotificationService.createOverdueNotification(user_id, book_id, user_name, book_title, user_email);
-
-    // Send WebSocket notification
-    sendNotification(user_id, notification.message);
-
-    res.status(201).json({ success: true, message: "Overdue notification sent", data: notification });
-  } catch (error) {
-    console.error("Error creating overdue notification:", error.message);
-    throw new InternalServerErrorException("Failed to create overdue notification");
-  }
+  await notification.update(req.body);
+  res.status(200).json({ message: "Notification updated", data: notification });
 });
 
 // Create a borrow notification
 exports.createBorrowNotification = asyncWrapper(async (req, res) => {
-  try {
-    const { user_id, book_id, due_date } = req.body;
-    if (!user_id || !book_id || !due_date) {
-      throw new BadRequestException("User ID, book ID, and due date are required");
-    }
-
-    const notification = await NotificationService.createBorrowNotification(user_id, book_id, due_date);
-
-    // Send WebSocket notification
-    sendNotification(user_id, `Your book (ID: ${book_id}) is due on ${due_date}.`);
-
-    res.status(201).json({ success: true, message: "Borrow notification created", data: notification });
-  } catch (error) {
-    console.error("Error creating borrow notification:", error.message);
-    throw new InternalServerErrorException("Failed to create borrow notification");
+  const { user_id, book_id, due_date } = req.body;
+  if (!user_id || !book_id || !due_date) {
+    throw new BadRequestException(
+      "User ID, book ID, and due date are required"
+    );
   }
+
+  const notification = await NotificationService.createBorrowNotification(
+    user_id,
+    book_id,
+    due_date
+  );
+  sendNotification(user_id, notification.message);
+
+  res.status(201).json({
+    success: true,
+    message: "Borrow notification created",
+    data: notification,
+  });
 });
 
-// Create a reservation notification
-exports.createReservationNotification = asyncWrapper(async (req, res) => {
-  try {
-    const { user_id, book_id } = req.body;
-    if (!user_id || !book_id) {
-      throw new BadRequestException("User ID and book ID are required");
-    }
+// Create a notification based on type
+exports.createNotification = asyncWrapper(async (req, res) => {
+  const { type, user_id, book_id, due_date, message } = req.body;
 
-    const notification = await NotificationService.createReservationNotification(user_id, book_id);
-
-    // Send WebSocket notification
-    sendNotification(user_id, `Your reservation for book (ID: ${book_id}) is confirmed.`);
-
-    res.status(201).json({ success: true, message: "Reservation notification created", data: notification });
-  } catch (error) {
-    console.error("Error creating reservation notification:", error.message);
-    throw new InternalServerErrorException("Failed to create reservation notification");
+  if (!user_id || !type) {
+    throw new BadRequestException(
+      "User ID and notification type are required."
+    );
   }
+
+  let notification;
+
+  switch (type) {
+    case "Borrow":
+      notification = await NotificationService.createBorrowNotification(
+        user_id,
+        book_id,
+        type,
+        due_date
+      );
+      break;
+    case "Review":
+      notification = await NotificationService.createReviewNotification(
+        user_id,
+        book_id,
+        type
+      );
+      break;
+    case "Reservation":
+      notification = await NotificationService.createReservationNotification(
+        user_id,
+        book_id
+      );
+      break;
+    case "General":
+      if (!message) {
+        throw new BadRequestException(
+          "Message is required for General notifications."
+        );
+      }
+      notification = await NotificationService.createGeneralNotification(
+        message
+      );
+      break;
+    default:
+      throw new BadRequestException("Invalid notification type");
+  }
+
+  sendNotification(user_id, notification.message);
+
+  res.status(200).json({
+    message: "Notification created successfully",
+    data: notification,
+  });
 });
 
-// Create an available notification
-exports.createAvailableNotification = asyncWrapper(async (req, res) => {
-  try {
-    const { user_id, book_id } = req.body;
-    if (!user_id || !book_id) {
-      throw new BadRequestException("User ID and book ID are required");
-    }
-
-    const notification = await NotificationService.createAvailableNotification(user_id, book_id);
-
-    // Send WebSocket notification
-    sendNotification(user_id, `The book (ID: ${book_id}) you requested is now available.`);
-
-    res.status(201).json({ success: true, message: "Available notification created", data: notification });
-  } catch (error) {
-    console.error("Error creating available notification:", error.message);
-    throw new InternalServerErrorException("Failed to create available notification");
+// Delete a notification by ID
+exports.deleteNotification = asyncWrapper(async (req, res) => {
+  const deleted = await NotificationService.deleteNotification(req.params.id);
+  if (!deleted) {
+    throw new NotFoundException(
+      "Notification not found or could not be deleted"
+    );
   }
+  res.status(200).json({ message: "Notification deleted successfully" });
 });
 
-// Send an overdue reminder
-exports.sendOverdueReminder = asyncWrapper(async (req, res) => {
-  try {
-    const { borrowId } = req.params;
-    if (!borrowId) {
-      throw new BadRequestException("Borrow ID is required");
-    }
+// Check and send notifications for upcoming due dates
+exports.checkUpcomingDueDates = asyncWrapper(async (req, res) => {
+  await NotificationService.checkUpcomingDueDates();
+  res
+    .status(200)
+    .json({ message: "Upcoming due dates checked and notifications sent." });
+});
 
-    const result = await NotificationService.sendOverdueReminder(borrowId);
+// Check and send notifications for overdue borrows
+exports.checkOverdueBorrows = asyncWrapper(async (req, res) => {
+  await NotificationService.checkOverdueBorrows();
+  res
+    .status(200)
+    .json({ message: "Overdue borrows checked and notifications sent." });
+});
 
-    if (!result.success) {
-      throw new InternalServerErrorException(result.message);
-    }
-
-    res.json({ message: result.message });
-  } catch (error) {
-    console.error("Error sending overdue reminder:", error.message);
-    throw new InternalServerErrorException("Failed to send overdue reminder");
-  }
+// Notify that a book has been returned
+exports.notifyBookReturned = asyncWrapper(async (req, res) => {
+  const { borrow_id } = req.body;
+  const response = await NotificationService.notifyBookReturned(borrow_id);
+  await Borrow.update({ return_date: new Date() }, { where: { borrow_id } });
+  res.status(200).json(response);
 });

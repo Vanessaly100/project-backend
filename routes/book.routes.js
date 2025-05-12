@@ -10,7 +10,7 @@ const { authenticateUser, authorizeAdmin } = require("../middlewares/auth.middle
 
 router.get("/all",authenticateUser, bookController.getAllBooks);
 router.get("/:id",authenticateUser, bookController.getBookById);
-
+ 
 //  Admin Routes (Only Admins Can Manage Books)
 router.post("/", authenticateUser, authorizeAdmin, bookController.createBook);
 router.put("/:id", authenticateUser, authorizeAdmin, bookController.updateBook);

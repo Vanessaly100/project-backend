@@ -11,7 +11,7 @@ module.exports = {
       "Thriller",
       "Science",
       "Fiction",
-      "History",
+      "History",   
     ];
 
     const genresData = uniqueGenres.map((name) => ({
