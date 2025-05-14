@@ -5,7 +5,6 @@ const { authenticateUser, authorizeAdmin, } = require("../middlewares/auth.middl
 
 router.post("/", authenticateUser, borrowController.borrowBooks);
 router.get("/all", authenticateUser, authorizeAdmin, borrowController.getAllBorrows);
-// router.get("/history", authenticateUser, borrowController.getBorrowHistory);
 router.put("/return", authenticateUser, borrowController.returnBooks);
 router.get(
   "/borrows/active",

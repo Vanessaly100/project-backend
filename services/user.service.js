@@ -208,7 +208,7 @@ exports.getUserProfile = async (user_id) => {
 // Get User Borrowed Books
 exports.getUserBorrowedBooks = async (user_id) => {
   const borrowedBooks = await Borrow.findAll({
-    where: { user_id, status: "Borrowed" },
+    where: { user_id, status: "borrowed" },
     include: [
       {
         model: Book,
