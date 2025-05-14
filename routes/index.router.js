@@ -9,6 +9,8 @@ const categoryRoutes = require("../routes/category.routes");
 const recommendationRoutes = require("../routes/recommendation.routes");
 const notificationRoutes = require("../routes/notification.routes");
 const reservationRoutes = require("../routes/reservation.routes");
+const reviewRoutes = require("../routes/review.routes");
+const ratingRoutes = require("../routes/rating.routes");
 const router = express.Router();
 
 
@@ -33,6 +35,8 @@ router.use("/borrowing",  borrowRoutes);
 router.use("/recommendations", recommendationRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/reservations", reservationRoutes);
+router.use("/reviews", reviewRoutes);
+router.use("/ratings", ratingRoutes);
 
 
 router.all("*", function (req, res) {

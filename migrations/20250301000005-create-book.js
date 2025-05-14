@@ -11,41 +11,42 @@ module.exports = {
         allowNull: false,
       },
       category_id: {
-            type: Sequelize.UUID,
-            allowNull: false,
-            references: { model: "Categories", key: "category_id" },
-            onUpdate: "CASCADE",
-              onDelete: "SET NULL",
-          },
-      author_id: { 
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: { model: "Categories", key: "category_id" },
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
+      },
+      author_id: {
         type: Sequelize.UUID,
         allowNull: false,
         references: { model: "Authors", key: "author_id" },
         onDelete: "CASCADE",
       },
-       cover_url: {
-        type: Sequelize.STRING, 
-        allowNull: true, 
+      cover_url: {
+        type: Sequelize.STRING,
+        allowNull: true,
       },
-//       genre: {
-//   type: Sequelize.ARRAY(Sequelize.STRING),
-//   allowNull: false,
-// },
+
       publication_year: {
         type: Sequelize.INTEGER,
       },
       totalCopies: {
-            type: Sequelize.INTEGER,
-            allowNull: false,
-            defaultValue: 5, // Total number of copies for the book
-          },
-          
-          available_copies: {
-            type: Sequelize.INTEGER,
-            allowNull: false,
-            defaultValue: 5,
-          },
-      
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 5, // Total number of copies for the book
+      },
+
+      available_copies: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 5,
+      },
+
+      borrowCount: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

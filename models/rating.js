@@ -1,20 +1,16 @@
-
-
 "use strict";
-
 const { Model } = require("sequelize");
-
 module.exports = (sequelize, DataTypes) => {
-  class Review extends Model {
+  class BookRating extends Model {
     static associate(models) {
-      Review.belongsTo(models.User, { foreignKey: "user_id" });
-      Review.belongsTo(models.Book, { foreignKey: "book_id" });
+      BookRating.belongsTo(models.User, { foreignKey: "user_id" });
+      BookRating.belongsTo(models.Book, { foreignKey: "book_id" });
     }
   }
 
-  Review.init(
+  BookRating.init(
     {
-      review_id: {
+      rating_id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
@@ -32,15 +28,16 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { min: 1, max: 5 },
       },
-      comment: {
+      review: {
         type: DataTypes.TEXT,
+        allowNull: true,
       },
     },
     {
       sequelize,
-      modelName: "Review",
+      modelName: "BookRating",
     }
   );
 
-  return Review;
+  return BookRating;
 };

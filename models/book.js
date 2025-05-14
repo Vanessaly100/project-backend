@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
         as: "category",
       });
       Book.hasMany(models.Borrow, { foreignKey: "book_id", as: "borrows" });
+      Book.hasMany(models.Review, { foreignKey: "review_id", as: "review" });
 
       // Many-to-many relationship with Genre
       Book.belongsToMany(models.Genre, {
@@ -59,6 +60,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: true,
         defaultValue: 5,
+      },
+      borrowCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
       },
     },
     {

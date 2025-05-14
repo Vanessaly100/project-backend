@@ -1,10 +1,10 @@
-'use strict';
+
 "use strict";
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable("Shares", {
-      share_id: {
+    await queryInterface.createTable("Reviews", {
+      review_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true,
@@ -21,31 +21,21 @@ module.exports = {
         references: { model: "Books", key: "book_id" },
         onDelete: "CASCADE",
       },
-      platform: {
-        type: Sequelize.ENUM("Facebook", "Twitter", "Instagram", "LinkedIn" , "WhatsApp"),
-        allowNull: false,
-      },
-      shared_at: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-      interaction_count: {
+      rating: {
         type: Sequelize.INTEGER,
-        defaultValue: 0,
-      },
-      createdAt: {
-        type: Sequelize.DATE,
         allowNull: false,
+        validate: { min: 1, max: 5 },
       },
-      updatedAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
+      comment: {
+        type: Sequelize.TEXT,
+        allowNull: true,
       },
+      createdAt: Sequelize.DATE,
+      updatedAt: Sequelize.DATE,
     });
   },
 
   down: async (queryInterface) => {
-    await queryInterface.dropTable("Shares");
+    await queryInterface.dropTable("Reviews");
   },
-}; 
+};

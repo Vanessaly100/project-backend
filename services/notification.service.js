@@ -301,7 +301,7 @@ exports.checkUpcomingDueDates = async () => {
         book_id: book.book_id,
         borrow_id: borrow.borrow_id,
         message: userMessage,
-        type: "Reminder",
+        type: "Reminder", 
         is_read: "Unread",
       });
       sendNotification(user.user_id, userMessage);

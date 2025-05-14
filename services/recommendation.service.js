@@ -1,44 +1,74 @@
-const { Recommendation, Book, BorrowHistory, User } = require("../models");
+// const { Recommendation, Book, BorrowHistory, User } = require("../models");
 
-const generateRecommendations = async (userId) => {
-  try {
-    // Step 1: Get the books the user has borrowed
-    const borrowedBooks = await BorrowHistory.findAll({
-      where: { user_id: userId },
-      attributes: ["book_id"],
-    });
+// recommendation.service.js
+const { Book, Borrow, User, Genre } = require("../models");
+const { Op } = require('sequelize');
+const genre = require("../models/genre");
 
-    if (borrowedBooks.length === 0) return [];
+exports.generateRecommendationsForUser = async (userId, limit = 10) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error("User not found");
 
-    const bookIds = borrowedBooks.map((b) => b.book_id);
+  // Get user's most borrowed genres or favorite genres (optional advanced logic)
 
-    // Step 2: Find similar books based on genre
-    const recommendedBooks = await Book.findAll({
-      where: {
-        genre: {
-          [Op.in]: Sequelize.literal(
-            `(SELECT genre FROM Books WHERE book_id IN (${bookIds.join(",")}))`
-          ),
-        },
-        book_id: { [Op.notIn]: bookIds }, // Exclude books already read
-      },
-      attributes: ["book_id"],
-      limit: 10,
-    });
+  const topBooks = await Book.findAll({
+    order: [["borrowCount", "DESC"]],
+    limit,
+  });
 
-    const recommendedBookIds = recommendedBooks.map((b) => b.book_id);
+ 
+  const topBookWithGenres = await Book.findByPk(topBooks[0]?.id, {
+    include: {
+      model: Genre,
+      attributes: ["genre_id", "name"],
+      through: { attributes: [] }, 
+    },
+  });
 
-    // Step 3: Save recommendations in the database
-    await Recommendation.upsert({
-      user_id: userId,
-      recommended_books: recommendedBookIds,
-      algorithm_used: "content-based",
-    });
-
-    return recommendedBookIds;
-  } catch (error) {
-    console.error("Error generating recommendations:", error);
+  if (!topBookWithGenres || !topBookWithGenres.Genres?.length) {
+    return []; 
   }
-};
 
-module.exports = { generateRecommendations };
+  // Use the first genre for example (or loop through if you want all)
+  const genreId = topBookWithGenres.Genres[0].genre_id;
+
+  // Step 2: Find books with the same genre
+  const genreBooks = await Book.findAll({
+    include: {
+      model: Genre,
+      where: { genre_id: genreId },
+      attributes: ["name"],
+      through: { attributes: [] },
+    },
+    limit,
+  });
+
+  // const topBook = await Book.findOne({
+  //   where: { id: topBooks[0].id },
+  //   include: {
+  //     model: Author,
+  //     attributes: ["author_id", "name"],
+  //   },
+  // });
+
+  if (!topBooks) return [];
+
+  const authorBooks = await Book.findAll({
+    where: {
+      author_id: topBooks.author_id,
+    },
+    include: {
+      model: Author,
+      attributes: ["name"],
+    },
+    limit,
+  });
+
+  // Merge and remove duplicates
+  const allRecommendations = [...topBooks, ...genreBooks, ...authorBooks];
+  const uniqueBooks = Array.from(
+    new Set(allRecommendations.map((book) => book.id))
+  ).map((id) => allRecommendations.find((book) => book.id === id));
+
+  return uniqueBooks.slice(0, limit);
+};

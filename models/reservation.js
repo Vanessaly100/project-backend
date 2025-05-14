@@ -29,13 +29,18 @@ Reservation.init(
       onDelete: "CASCADE",
     },
     status: {
-      type: DataTypes.ENUM("Pending", "Fulfilled", "Cancelled"),
-      defaultValue: "Pending",
+      type: DataTypes.ENUM("pending", "fulfilled", "canceled"),
+      defaultValue: "pending",
     },
-    
-  }, 
+
+    reservation_date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
   {
-    sequelize, 
+    sequelize,
     modelName: "Reservation",
   }
 );

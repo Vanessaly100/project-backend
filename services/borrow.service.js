@@ -162,7 +162,7 @@ exports.borrowBooks = async (user_id, bookIds) => {
             bookId: book.book_id,
             title: book.title,
             success: false,
-            message: `"${book.title}" is currently out of stock.`,
+            message: `"${book.title}" is currently out of stock. Reserve to be notified when available.`,
           });
           continue;
         }
