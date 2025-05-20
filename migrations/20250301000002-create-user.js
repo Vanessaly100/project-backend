@@ -54,13 +54,6 @@ module.exports = {
         defaultValue: false,
       },
 
-      // wishlist: {
-      //   type: Sequelize.ARRAY(Sequelize.UUID),
-      // },
-      // borrow_history: {
-      //   type: Sequelize.ARRAY(Sequelize.UUID),
-      // },
-
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,

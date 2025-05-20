@@ -68,7 +68,6 @@ exports.getFilteredNotifications = async (query) => {
         { "$user.first_name$": { [Op.iLike]: `%${filter}%` } },
         { "$user.email$": { [Op.iLike]: `%${filter}%` } },
         { "$book.title$": { [Op.iLike]: `%${filter}%` } },
-        // { "$type$": { [Op.iLike]: `%${filter}%` } },
       ],
     },
     include: [
@@ -157,88 +156,43 @@ exports.deleteNotification = async (notification_id) => {
 };
 
 
-exports.createNotification = async (
-  first_name,
-  email,
-  book_title,
-  message,
-  type
-) => {
-  // Find user by first_name and email
-  const user = await User.findOne({
-    where: { first_name, email },
-  });
-
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  // Find book by title
-  const book = await Book.findOne({
-    where: { title: book_title },
-  });
-
-  if (!book) {
-    throw new Error("Book not found");
-  }
-
-  // Create notification with retrieved IDs
+exports.createNotification = async (data) => {
   const notification = await Notification.create({
-    user_id: user.user_id,
-    book_id: book.book_id,
-    message,
-    type,
+    user_id: data.user_id,
+    book_id: data.book_id,
+    // borrow_id: data.borrow_id || null,
+    type: data.type || "General",
+    message: data.message,
+    is_read: "Unread", 
   });
 
-  // Send email notification
-  if (user.email) {
-    await sendEmail(user.email, "Library Notification", message);
-  }
+  // Send via socket (real-time)
+  sendNotification(data.user_id, data.message);
 
   return notification;
 };
 
-// Create Review Notification
-exports.createReviewNotification = async (user_id, book_id) => {
-  const message = `You have received a new reply on your book review.`;
-  const notification = await Notification.create({
-    user_id,
-    book_id,
-    type: 'Review',
-    message,
-  });
-  return notification;
-};
 
-// Create Reservation Notification
-exports.createReservationNotification = async (user_id, book_id) => {
-  const message = `Your reservation for the book is now available for pickup.`;
-  const notification = await Notification.create({
-    user_id,
-    book_id,
-    type: 'Reservation',
-    message,
-  });
-  return notification;
-};
+exports.createNotificationForAllUsers = async (data) => {
+  const users = await User.findAll({ attributes: ["user_id"] });
 
-exports.createGeneralNotification = async (message) => {
-  const users = await User.findAll();
-  const notifications = [];
-  for (const user of users) {
-    const notification = await Notification.create({
+  const notifications = users.map((user) => {
+    const notification = {
+      notification_id: require("uuid").v4(),
       user_id: user.user_id,
-      type: "General",
-      message: message,
-    });
-    notifications.push(notification);
-    sendNotification(user.user_id, message);
-  }
+      type: data.type || "General",
+      message: data.message,
+      is_read: "Unread",
+    };
 
-  return notifications; 
+    // Send in real time
+    sendNotification(user.user_id, data.message);
+
+    return notification;
+  });
+
+  return await Notification.bulkCreate(notifications);
 };
-
-
 
 //================================================================
 

@@ -16,13 +16,13 @@ module.exports = {
       },
       book_id: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true,
         references: { model: "Books", key: "book_id" },
         onDelete: "CASCADE",
       },
       borrow_id: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true,
         references: { model: "Borrows", key: "borrow_id" },
         onDelete: "CASCADE",
       },

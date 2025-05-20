@@ -3,13 +3,11 @@ const { v4: uuidv4 } = require("uuid");
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Fetch all authors from the Authors table
     const authors = await queryInterface.sequelize.query(
       `SELECT author_id, name FROM "Authors";`,
       { type: Sequelize.QueryTypes.SELECT }
     );
 
-    // Fetch all categories from the Categories table
     const categories = await queryInterface.sequelize.query(
       `SELECT category_id, name FROM "Categories";`,
       { type: Sequelize.QueryTypes.SELECT }

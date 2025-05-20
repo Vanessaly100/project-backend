@@ -86,60 +86,18 @@ exports.createBorrowNotification = asyncWrapper(async (req, res) => {
   });
 });
 
-// Create a notification based on type
-exports.createNotification = asyncWrapper(async (req, res) => {
-  const { type, user_id, book_id, due_date, message } = req.body;
 
-  if (!user_id || !type) {
-    throw new BadRequestException(
-      "User ID and notification type are required."
-    );
-  }
+exports.createNotification = asyncHandler(async (req, res) => {
+  const notification = await NotificationService.createNotification(req.body);
+  res.status(201).json({ success: true, data: notification });
+});
 
-  let notification;
-
-  switch (type) {
-    case "Borrow":
-      notification = await NotificationService.createBorrowNotification(
-        user_id,
-        book_id,
-        type,
-        due_date
-      );
-      break;
-    case "Review":
-      notification = await NotificationService.createReviewNotification(
-        user_id,
-        book_id,
-        type
-      );
-      break;
-    case "Reservation":
-      notification = await NotificationService.createReservationNotification(
-        user_id,
-        book_id
-      );
-      break;
-    case "General":
-      if (!message) {
-        throw new BadRequestException(
-          "Message is required for General notifications."
-        );
-      }
-      notification = await NotificationService.createGeneralNotification(
-        message
-      );
-      break;
-    default:
-      throw new BadRequestException("Invalid notification type");
-  }
-
-  sendNotification(user_id, notification.message);
-
-  res.status(200).json({
-    message: "Notification created successfully",
-    data: notification,
-  });
+//  Create notification for ALL users
+exports.notifyAllUsers = asyncHandler(async (req, res) => {
+  const notifications = await NotificationService.createNotificationForAllUsers(
+    req.body
+  );
+  res.status(201).json({ success: true, data: notifications });
 });
 
 // Delete a notification by ID

@@ -8,7 +8,7 @@ const getAllBooks = async ({
   limit = 10,
   sortBy = "title",
   sortOrder = "ASC",
-  filter = {}, // Now an object with multiple filters
+  filter = {}, 
 }) => {
   const offset = (page - 1) * limit;
   const isNumeric = !isNaN(filter) && filter.trim() !== "";
@@ -17,6 +17,7 @@ const getAllBooks = async ({
       { title: { [Op.iLike]: `%${filter}%` } },
       { "$genres.name$": { [Op.iLike]: `%${filter}%` } },
       { "$author.name$": { [Op.iLike]: `%${filter}%` } },
+      { "$category.name$": { [Op.iLike]: `%${filter}%` } },
     ],
   };
 
@@ -104,9 +105,55 @@ const getBookById = async (book_id) => {
   });
 };
 
+
 const createBook = async (bookData) => {
-  return await Book.create(bookData);
+
+  const [author] = await Author.findOrCreate({
+    where: { name: bookData.author },
+  });
+  const [category] = await Category.findOrCreate({
+    where: { name: bookData.category },
+  });
+
+  const newBook = await Book.create({
+    title: bookData.title,
+    author_id: author.author_id,
+    category_id: category.category_id,
+    cover_url: bookData.cover_url, // camelCase consistent
+    description: bookData.description,
+    publication_year: bookData.publishedYear,
+    totalCopies: bookData.totalCopies,
+    available_copies: bookData.availableCopies,
+    isAvailable: bookData.isAvailable,
+  });
+  
+
+  // Create or find genres and associate
+  const genrePromises = bookData.genres.map(async (name) => {
+    const [genre] = await Genre.findOrCreate({ where: { name } });
+    return genre;
+  });
+  const genres = await Promise.all(genrePromises);
+  await newBook.setGenres(genres);
+
+  // Fetch the book with all relations included
+  const createdBook = await Book.findOne({
+    where: { book_id: newBook.book_id },
+    include: [
+      { model: Author, as:"author", attributes: ["author_id", "name", "bio"] },
+      { model: Category, as:"category", attributes: ["category_id", "name"] },
+      {
+        model: Genre, as:"genres",
+        attributes: ["genre_id", "name"],
+        through: { attributes: [] },
+      },
+    ],
+  });
+
+  return createdBook;
 };
+
+
 
 const updateBook = async (bookId, bookData) => {
     const {title,category,author,genre,cover_url,publishedYear,
@@ -177,5 +224,25 @@ const deleteBook = async (book_id) => {
   return { message: "Book deleted successfully" };
 };
 
+const getRecentlyAddedBooks = async (limit = 10) => {
+  const recentBooks = await Book.findAll({
+    order: [["createdAt", "DESC"]],
+    limit,
+    include: [
+      { model: Author, as: "author" },
+      { model: Category, as: "category" },
+      { model: Genre, as: "genres" },
+    ],
+  });
 
-module.exports = { getAllBooks, getBookById, createBook, updateBook, deleteBook };
+  return recentBooks;
+};
+
+module.exports = {
+  getAllBooks,
+  getBookById,
+  createBook,
+  updateBook,
+  deleteBook,
+  getRecentlyAddedBooks,
+};

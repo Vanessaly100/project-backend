@@ -1,4 +1,3 @@
-// error-handler.js
 
 const {
   ValidationException,

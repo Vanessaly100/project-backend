@@ -9,7 +9,8 @@ class User extends Model {
     User.hasMany(models.Review, { foreignKey: "user_id", as: "reviews" });
     User.hasMany(models.Recommendation, { foreignKey: "user_id", as: "recommendations" });
     User.hasMany(models.Notification, { foreignKey: "user_id", as: "notifications" });
-    
+    User.hasMany(models.RecentActivity, { foreignKey: "user_id" });
+
 
   } 
 } 

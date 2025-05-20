@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const bookController = require("../controllers/book.controller");
 const { authenticateUser, authorizeAdmin } = require("../middlewares/auth.middleware");
+const  bookSchema  = require("../validators/book.validation");
+const validate = require("../middlewares/validateRequest");
 
 
 // 🏷 Public Routes (User Access)
@@ -9,10 +11,19 @@ const { authenticateUser, authorizeAdmin } = require("../middlewares/auth.middle
 // router.get("/public/:book_id", bookController.getBookById);
 
 router.get("/all",authenticateUser, bookController.getAllBooks);
+router.get(
+  "/recent-books",
+  authenticateUser,
+  bookController.getRecentlyAddedBooks
+);
 router.get("/:id",authenticateUser, bookController.getBookById);
- 
-//  Admin Routes (Only Admins Can Manage Books)
-router.post("/", authenticateUser, authorizeAdmin, bookController.createBook);
+router.post(
+  "/",
+  authenticateUser,
+  authorizeAdmin,
+  validate(bookSchema),
+  bookController.createBook
+); 
 router.put("/:id", authenticateUser, authorizeAdmin, bookController.updateBook);
 router.delete("/:id", authenticateUser, authorizeAdmin, bookController.deleteBook);
 

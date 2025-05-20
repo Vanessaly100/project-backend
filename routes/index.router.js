@@ -11,6 +11,7 @@ const notificationRoutes = require("../routes/notification.routes");
 const reservationRoutes = require("../routes/reservation.routes");
 const reviewRoutes = require("../routes/review.routes");
 const ratingRoutes = require("../routes/rating.routes");
+const adminDashboardRoutes = require("../routes/dashboard.routes")
 const router = express.Router();
 
 
@@ -37,6 +38,7 @@ router.use("/notifications", notificationRoutes);
 router.use("/reservations", reservationRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/ratings", ratingRoutes);
+router.use("/dashboard", adminDashboardRoutes);
 
 
 router.all("*", function (req, res) {

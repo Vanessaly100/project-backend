@@ -3,7 +3,7 @@ const { sequelize } = require("../models");
 const { Op, Sequelize } = require("sequelize");
 const { sendEmail } = require("../lib/email");
 const notificationService = require("../services/notification.service");
-const { InternalServerErrorException } = require("../lib/errors.definitions");
+const logActivity = require("../services/activityLogger.service");
 const validator = require("validator");
 
 exports.getAllBorrowedBooks = async ({
@@ -142,7 +142,7 @@ exports.borrowBooks = async (user_id, bookIds) => {
           where: {
             user_id,
             book_id: bookId,
-            status: "borrowed", 
+            status: "borrowed",
           },
           transaction,
         });
@@ -173,7 +173,7 @@ exports.borrowBooks = async (user_id, bookIds) => {
             user_id,
             book_id: book.book_id,
             due_date,
-            status: "borrowed", 
+            status: "borrowed",
           },
           { transaction }
         );
@@ -185,7 +185,12 @@ exports.borrowBooks = async (user_id, bookIds) => {
         if (user.points >= 100 && !user.rewarded) {
           await user.update({ rewarded: true }, { transaction });
         }
-
+ // Activity Log on Dashboard
+ await logActivity({
+  user_id: user.user_id,
+  type: "borrow",
+  book_id: book.book_id,
+});
         // Notifications outside the transaction
         process.nextTick(async () => {
           try {
@@ -226,6 +231,8 @@ exports.borrowBooks = async (user_id, bookIds) => {
     }
 
     await transaction.commit();
+
+   
     return {
       message: "Borrow process completed",
       results,
@@ -267,7 +274,6 @@ exports.returnBook = async (user_id, book_id) => {
       book.available_copies += 1;
       await book.save();
     }
-
     // Trigger notifications
     await notificationService.notifyBookReturned(
       borrowRecord.user_id,
@@ -284,6 +290,13 @@ exports.returnBook = async (user_id, book_id) => {
         `You have successfully returned the book.`
       );
     }
+
+    // Activity Log on Dashboard
+    await logActivity({
+      user_id: user.user_id,
+      type: "return",
+      book_id: book.book_id,
+    });
 
     return {
       success: true,

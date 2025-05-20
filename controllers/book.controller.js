@@ -45,19 +45,17 @@ exports.getBookById = asyncHandler(async (req, res) => {
 
 // CREATE a new book
 exports.createBook = asyncHandler(async (req, res) => {
-  const { errors, value } = req;
+  const bookData = req.body;
+  const newBook = await bookService.createBook(bookData);
 
-  if (errors) {
-    throw new ValidationException("Validation failed", errors);
-  }
-
-  const newBook = await bookService.createBook(value);
   if (!newBook) {
     throw new InternalServerErrorException("Error creating book");
   }
 
   res.status(201).json({ message: "Book created successfully", book: newBook });
 });
+
+
 
 // UPDATE a book
 exports.updateBook = asyncHandler(async (req, res) => {
@@ -73,4 +71,10 @@ exports.updateBook = asyncHandler(async (req, res) => {
 exports.deleteBook = asyncHandler(async (req, res) => {
   const result = await bookService.deleteBook(req.params.id);
   res.json(result); 
+});
+
+exports.getRecentlyAddedBooks = asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 10;
+  const books = await bookService.getRecentlyAddedBooks(limit);
+  res.json({ success: true, books });
 });

@@ -1,4 +1,4 @@
-// many-to-many relationship between Book and Genre via BookGenres
+
 
 "use strict";
 const { Model, DataTypes } = require("sequelize");

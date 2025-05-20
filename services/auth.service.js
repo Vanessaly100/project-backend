@@ -7,6 +7,8 @@ const {
   NotFoundException,
   UnauthorizedException,
 } = require("../lib/errors.definitions");
+const logActivity = require("../services/activityLogger.service");
+
 
 const SECRET_KEY = process.env.JWT_SECRET || process.env.JWT_SECRET;
 
@@ -17,13 +19,21 @@ const registerUser = async ({ first_name, last_name, email, password }) => {
 
   const hashedPassword = await userService.hashPassword(password);
 
-  return await User.create({
+  const newUser = await User.create({
     first_name,
     last_name,
     email,
     password_hash: hashedPassword,
     role: "user",
   });
+
+  // Log activity after user is created
+  await logActivity({
+    user_id: newUser.user_id,
+    type: "register",
+  });
+
+  return newUser;
 };
 
 // Register an admin
@@ -43,14 +53,23 @@ const registerAdmin = async ({
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  return await User.create({
+  const newAdmin = await User.create({
     first_name,
     last_name,
     email,
     password_hash: hashedPassword,
     role: "admin",
   });
+
+  // Log activity after admin is created
+  await logActivity({
+    user_id: newAdmin.user_id,
+    type: "register_admin",
+  });
+
+  return newAdmin;
 };
+
 
 // Login for users & admins
 const loginUser = async ({ email, password }) => {

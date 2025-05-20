@@ -1,10 +1,14 @@
-const { Author } = require("../models");
-const { Op } = require("sequelize");
+const { Author,Book } = require("../models");
+const { Op, Sequelize } = require("sequelize");
+
+
+const getAllAuthorsNoLimit = async () => {
+  return await Author.findAll(); 
+};
 
 const getAuthorByName = async (name) => {
   return await Author.findOne({ where: { name } });
 };
-
 
 const createAuthor = async (authorData) => {
   return await Author.create(authorData);
@@ -69,8 +73,32 @@ const deleteAuthor = async (author_id) => {
   return { message: "Author deleted successfully" };
 };  
 
+
+const getBookCountPerAuthor = async () => {
+  const authors = await Author.findAll({
+    attributes: [
+      "author_id",
+      "name",
+      "email",
+      [Sequelize.fn("COUNT", Sequelize.col("books.book_id")), "bookCount"],
+    ],
+    include: [
+      {
+        model: Book,
+        as: "books",
+        attributes: [], // Don't fetch book details
+      },
+    ],
+    group: ["Author.author_id"],
+    order: [[Sequelize.literal("bookCount"), "DESC"]],
+  });
+
+  return authors;
+};
 module.exports = {
+  getAllAuthorsNoLimit,
   createAuthor,
+  getBookCountPerAuthor,
   getAllAuthors,
   getAuthorById,
   getAuthorByName, 

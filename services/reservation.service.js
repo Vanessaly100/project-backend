@@ -5,6 +5,7 @@ const {
   BadRequestException,
   NotFoundException,
 } = require("../lib/errors.definitions");
+const logActivity = require("../services/activityLogger.service");
 const { sendNotification } = require("../lib/socket");
 
 
@@ -16,6 +17,18 @@ const { sendNotification } = require("../lib/socket");
 exports.createReservation = async ({ user_id, book_id }) => {
   const book = await Book.findByPk(book_id);
   if (!book) throw new NotFoundException("Book not found");
+
+  const existingReservation = await Reservation.findOne({
+    where: {
+      user_id,
+      book_id,
+      status: { [Op.not]: "fulfilled" },
+    },
+  });
+
+  if (existingReservation) {
+    throw new Error("You have already reserved this book.");
+  }
 
   const reservation = await Reservation.create({
     user_id,
@@ -32,7 +45,6 @@ exports.createReservation = async ({ user_id, book_id }) => {
     attributes: ["user_id", "first_name", "email", "role"],
   });
 
-  // Notify Admins
   for (const admin of admins) {
     const adminNotification = await Notification.create({
       user_id: admin.user_id,
@@ -44,18 +56,24 @@ exports.createReservation = async ({ user_id, book_id }) => {
     sendNotification(admin.user_id, adminNotification);
   }
 
-  // Notify the user
   const userNotification = await Notification.create({
     user_id: user.user_id,
     type: "Reservation",
-    message: ` Reservation placed: You reserved "${book.title}". We'll notify you when it's available.`,
+    message: `Reservation placed: You reserved "${book.title}". We'll notify you when it's available.`,
     role: "user",
     book_id: book.book_id,
   });
   sendNotification(user.user_id, userNotification);
+  // Activity Log on Dashboard
+  await logActivity({
+    user_id: user.user_id,
+    type: "reserve",
+    book_id: book.book_id,
+  });
 
   return reservation;
 };
+
 
 
 exports.getUserReservations = async (
@@ -208,7 +226,6 @@ exports.cancelReservationByAdmin = async (reservationId, reason) => {
   return reservation;
 };
 
-// Fulfill a reservation (convert to borrow)
 exports.fulfillReservation = async (reservationId, userId) => {
   const reservation = await Reservation.findOne({
     where: {
@@ -223,36 +240,35 @@ exports.fulfillReservation = async (reservationId, userId) => {
     ],
   });
 
-  
+  // ✅ First, handle null case
+  if (!reservation) {
+    throw new Error("Reservation not found");
+  }
 
+  // Then check for status
   if (reservation.status === "fulfilled") {
     throw new Error("Reservation is already fulfilled");
   }
-
-  if (!reservation) {
-    return res
-      .status(404)
-      .json({ success: false, message: "Reservation not found" });
-  }
-
 
   if (reservation.status === "canceled") {
     throw new Error("Cannot fulfill a canceled reservation");
   }
 
-   const updatedReservation = await reservation.update({
-     status: "fulfilled",
-     fulfilledAt: new Date(),
-   });
+  // ✅ Fulfill the reservation
+  const updatedReservation = await reservation.update({
+    status: "fulfilled",
+    fulfilledAt: new Date(),
+  });
 
   const user = await User.findByPk(reservation.user_id);
   const book = await Book.findByPk(reservation.book_id);
 
-  // Notify user
+  // ✅ Create notification
   await Notification.create({
     user_id: reservation.user_id,
     book_id: reservation.book_id,
-    message: `Reservation: ${user.first_name} Your reserved book  ${book.title} is now available for borrowing.`,
+    borrow_id: null, // Or a real borrow_id if available
+    message: `Reservation: ${user.first_name} Your reserved book "${book.title}" is now available for borrowing.`,
     notification_type: "Reservation",
     role: "user",
   });

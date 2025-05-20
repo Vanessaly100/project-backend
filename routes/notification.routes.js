@@ -12,6 +12,18 @@ router.get(
   authorizeAdmin,
   NotificationController.getAllNotifications
 );
+router.post(
+  "/single",
+  authenticateUser,
+  authorizeAdmin,
+  NotificationController.createNotification
+); // For individual user
+router.post(
+  "/all",
+  authenticateUser,
+  authorizeAdmin,
+  NotificationController.notifyAllUsers
+);
 router.get(
   "/:id",
   authenticateUser,

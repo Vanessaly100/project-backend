@@ -4,7 +4,6 @@ const sequelize = require("../config/database");
 module.exports = (sequelize, DataTypes) => {
   class Book extends Model {
     static associate(models) {
-      // Associations with other models
       Book.belongsTo(models.Author, { foreignKey: "author_id", as: "author" });
       Book.belongsTo(models.Category, {
         foreignKey: "category_id",
@@ -12,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
       });
       Book.hasMany(models.Borrow, { foreignKey: "book_id", as: "borrows" });
       Book.hasMany(models.Review, { foreignKey: "review_id", as: "review" });
+      Book.hasMany(models.RecentActivity, { foreignKey: "activity_id" });
 
       // Many-to-many relationship with Genre
       Book.belongsToMany(models.Genre, {
@@ -68,6 +68,10 @@ module.exports = (sequelize, DataTypes) => {
       avgRating: {
         type: DataTypes.FLOAT,
         defaultValue: 0,
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
       },
     },
     {

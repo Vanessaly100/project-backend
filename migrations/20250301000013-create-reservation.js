@@ -25,7 +25,7 @@ module.exports = {
         type: Sequelize.ENUM("pending", "fulfilled", "canceled"),
         defaultValue: "pending",
       },
-      reservation_date: {
+      reservation_date: { 
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW,

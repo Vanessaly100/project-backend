@@ -3,11 +3,48 @@ const asyncHandler = require("express-async-handler");
 const {
   NotFoundException,
 } = require("../lib/errors.definitions");
+const { Author } = require("../models");
 
-// Create a new author
-const createAuthor = asyncHandler(async (req, res) => {
-  const newAuthor = await authorService.createAuthor(req.body);
-  res.status(201).json(newAuthor);
+const fetchAllAuthorsNoLimit = asyncHandler(async (req, res) => {
+  const authors = await authorService.getAllAuthorsNoLimit();
+  res.status(200).json({ authors });
+});
+
+
+const createAuthor = asyncHandler( async (req, res) => {
+  try {
+    const { name, email, contact, bio, profile_picture, social_media } =
+      req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name and email are required" });
+    }
+
+    const existingAuthor = await Author.findOne({ where: { email } });
+    if (existingAuthor) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: {
+          email: "This email is already in use",
+        },
+      });
+    }
+
+    const newAuthor = await Author.create({
+      name,
+      email,
+      contact,
+      bio,
+      profile_picture,
+      social_media,
+    });
+
+    res.status(201).json(newAuthor);
+  } catch (error) {
+    console.error('Error creating author:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
@@ -68,8 +105,15 @@ const deleteAuthor = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Author deleted successfully" });
 });
 
+const getBookCountPerAuthor = asyncHandler(async (req, res) => {
+  const result = await authorService.getBookCountPerAuthor();
+  res.json({ success: true, authors: result });
+});
+
 module.exports = {
+  fetchAllAuthorsNoLimit,
   createAuthor,
+  getBookCountPerAuthor,
   getAllAuthors,
   getAuthorByName,
   getAuthorById,

@@ -1,24 +1,6 @@
 
 const ReservationService = require("../services/reservation.service");
 const asyncHandler = require("express-async-handler");
-const { sendNotification } = require("../lib/socket");
-
-
-
-
-// // Get a single reservation by ID
-// exports.getReservationById = async (req, res) => {
-//   try {
-//     const { reservation_id } = req.params;
-//     const reservation = await reservationService.getReservationById(reservation_id);
-//     if (!reservation) return res.status(404).json({ message: "Reservation not found" });
-
-//     res.status(200).json(reservation);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
 
 
 exports.createReservation = asyncHandler(async (req, res) => {
@@ -80,20 +62,36 @@ exports.cancelReservation = asyncHandler(async (req, res) => {
   
 });
 
-exports.fulfillReservation = asyncHandler(async (req, res) => {
-  const { reservationId } = req.params;
-  const userId = req.user.id;
-  const fulfillReservation = await ReservationService.fulfillReservation(
-    reservationId,
-    userId
-  );
+exports.fulfillReservation = async (req, res) => {
+  try {
+    const reservationId = req.params.reservationId; 
+    const userId = req.user.id;
 
-  res.status(200).json({
-    success: true,
-    message: "Reservation Fulfilled successfully",
-    data: fulfillReservation,
-  });
-});
+    console.log("Fulfilling reservation for:", {
+      reservationId, 
+      userId,
+    });
+
+    const result = await ReservationService.fulfillReservation(
+      reservationId,
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Reservation fulfilled successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fulfilling reservation:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      trace: error.stack,
+    });
+  }
+};
+
 
 exports.cancelReservationByAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;

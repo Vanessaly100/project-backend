@@ -10,10 +10,13 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
+      profile_picture: {
+        type: Sequelize.STRING,
+      },
       bio: {
         type: Sequelize.TEXT,
       },
-       social_media: { type: Sequelize.STRING },
+      social_media: { type: Sequelize.STRING },
       contact: { type: Sequelize.STRING },
       email: { type: Sequelize.STRING, unique: true },
       createdAt: {

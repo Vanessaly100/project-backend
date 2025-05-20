@@ -8,7 +8,6 @@ const router = express.Router();
 
 
 router.use(cookieParser()); 
-// Authentication Routes
 router.post("/user/register", register);
 router.post("/register/admin", registerAdminController);
 router.post("/login", login);

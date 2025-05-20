@@ -1,8 +1,7 @@
 'use strict';
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require('bcryptjs');
-const { Sequelize } = require("sequelize"); // ✅ Add Sequelize for literal support
-
+const { Sequelize } = require("sequelize"); 
 module.exports = {
   up: async (queryInterface) => {
     const users = [

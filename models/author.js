@@ -4,7 +4,6 @@ const sequelize = require("../config/database");
 module.exports = (sequelize, DataTypes) => {
   class Author extends Model {
     static associate(models) {
-      // Author has many Books
       Author.hasMany(models.Book, { foreignKey: "author_id", as: "books" });
     }
   }
@@ -19,6 +18,9 @@ module.exports = (sequelize, DataTypes) => {
       name: {
         type: DataTypes.STRING,
         allowNull: false,
+      },
+      profile_picture: {
+        type: DataTypes.STRING,
       },
       bio: {
         type: DataTypes.TEXT,

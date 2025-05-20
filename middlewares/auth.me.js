@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middlewares/auth.middleware");
-const {User} = require("../models"); // Import your User model
+const {User} = require("../models"); 
 
 //  Get logged-in user details (persist login)
 router.get("/me", authenticate, async (req, res) => {

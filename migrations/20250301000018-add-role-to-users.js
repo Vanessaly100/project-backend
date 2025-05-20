@@ -5,7 +5,7 @@ module.exports = {
     await queryInterface.addColumn("Users", "role", {
       type: Sequelize.STRING,
       allowNull: false,
-      defaultValue: "user", // Default role is "user"
+      defaultValue: "user", 
     });
   },
 
