@@ -5,6 +5,13 @@ const {
   NotFoundException,
 } = require("../lib/errors.definitions");
 
+
+
+exports.fetchAllCategoryNoLimit = asyncHandler(async (req, res) => {
+  const categories = await CategoryService.getAllCategoryNoLimit();
+  res.status(200).json({ categories });
+});
+
 // Create Category
 exports.createCategory = asyncHandler(async (req, res) => {
   const { name, description } = req.body;

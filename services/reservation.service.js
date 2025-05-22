@@ -96,7 +96,7 @@ exports.getUserReservations = async (
     order: [[sort, order.toUpperCase() === "DESC" ? "DESC" : "ASC"]],
     limit: limitInt,
     offset: (pageInt - 1) * limitInt,
-    include: [{ model: Book, as: "book", attributes: ["book_id", "title"] },
+    include: [{ model: Book, as: "book", attributes: ["book_id", "title", "cover_url"] },
       { model: User, as: "user", attributes: ["user_id", "first_name"] },
     ],
   });

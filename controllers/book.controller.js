@@ -10,12 +10,14 @@ const asyncHandler = require("express-async-handler");
 exports.getAllBooks = asyncHandler(async (req, res) => {
   try {
     const filter = req.query.filter || ""; 
+    const category = req.query.category || "";
     const result = await bookService.getAllBooks({
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10,
       sortBy: req.query.sortBy || "title",
       sortOrder: req.query.sortOrder || "ASC",
-      filter, 
+      filter,
+      category,
     });
 
     res.json({

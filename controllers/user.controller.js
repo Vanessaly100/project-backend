@@ -51,30 +51,36 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     });
   }
 
-  // Required fields
-  const requiredFields = [
+  // Parse reading_preferences string into array before building updateData
+  if (req.body.reading_preferences) {
+    if (typeof req.body.reading_preferences === "string") {
+      try {
+        req.body.reading_preferences = JSON.parse(req.body.reading_preferences);
+      } catch (error) {
+        req.body.reading_preferences = [];
+      }
+    }
+  }
+
+  const allowedFields = [
     "first_name",
     "last_name",
     "phone_number",
     "location",
     "email",
+    "reading_preferences",
+    "membership_type",
   ];
-  const missingFields = requiredFields.filter((field) => !req.body[field]);
 
-  if (missingFields.length > 0) {
-    throw new BadRequestException(
-      `Missing required fields: ${missingFields.join(", ")}`
-    );
-  }
+  // Build updateData dynamically, using parsed reading_preferences if applicable
+  const updateData = {};
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  });
 
-  const updateData = {
-    first_name: req.body.first_name,
-    last_name: req.body.last_name,
-    phone_number: req.body.phone_number,
-    location: req.body.location,
-    email: req.body.email,
-  };
-
+  // Proceed to update user profile
   const updatedUser = await userService.updateUserProfile(
     req.user.id,
     updateData,
@@ -86,12 +92,18 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
   res.status(200).json({
     message: "Profile updated successfully",
     user: {
-      id: updatedUser.user_id,
-      firstName: updatedUser.first_name,
-      lastName: updatedUser.last_name,
-      phoneNumber: updatedUser.phone_number,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      phone_number: updatedUser.phone_number,
       email: updatedUser.email,
-      profilePictureUrl: updatedUser.profile_picture_url,
+      membership_type: updatedUser.membership_type,
+      points: updatedUser.points,
+      rewarded: updatedUser.rewarded,
+      profile_picture_url: updatedUser.profile_picture_url,
+      profilePicturePublicId: updatedUser.profilePicturePublicId,
+      location: updatedUser.location,
+      reading_preferences: updatedUser.reading_preferences,
+      role: updatedUser.role,
     },
   });
 });

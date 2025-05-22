@@ -7,6 +7,7 @@ const {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  ConflictException,
 } = require("../lib/errors.definitions");
 
 // Hash Password Function
@@ -50,20 +51,41 @@ exports.updateUserProfile = async (userId, updateData, file) => {
   let profilePicturePublicId = user.profile_picture_public_id;
 
   if (file) {
-    // Delete the old picture from Cloudinary if it exists
     if (profilePicturePublicId) {
       await cloudinary.uploader.destroy(profilePicturePublicId);
     }
 
-    // Upload the new picture to Cloudinary
     const result = await cloudinary.uploader.upload(file.path);
     profilePictureUrl = result.secure_url;
     profilePicturePublicId = result.public_id;
 
-    // Update the fields related to the profile picture
     updateData.profile_picture_url = profilePictureUrl;
     updateData.profile_picture_public_id = profilePicturePublicId;
   }
+
+  // Check if the updated email is already taken by another user
+  if (updateData.email && updateData.email !== user.email) {
+    const existingEmailUser = await User.findOne({
+      where: { email: updateData.email },
+    });
+    if (existingEmailUser && existingEmailUser.user_id !== user.user_id) {
+      throw new ConflictException("Email already in use");
+    }
+  }
+
+  // Check if the updated phone number is already taken by another user
+  if (
+    updateData.phone_number &&
+    updateData.phone_number !== user.phone_number
+  ) {
+    const existingPhoneUser = await User.findOne({
+      where: { phone_number: updateData.phone_number },
+    });
+    if (existingPhoneUser && existingPhoneUser.user_id !== user.user_id) {
+      throw new ConflictException("Phone number already in use");
+    }
+  }
+  
 
   try {
     await user.update(updateData);
@@ -73,6 +95,7 @@ exports.updateUserProfile = async (userId, updateData, file) => {
     throw new InternalServerErrorException("Failed to update profile");
   }
 };
+
 
 
 exports.updateUserByAdmin = async (user_id, updateData) => {

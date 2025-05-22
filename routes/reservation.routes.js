@@ -25,7 +25,7 @@ router.put(
   authenticateUser,
   authorizeAdmin,
   reservationController.fulfillReservation
-);
+); 
 router.put(
   "/:id/admin/cancel",
   authenticateUser,

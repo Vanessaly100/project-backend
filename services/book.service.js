@@ -8,20 +8,23 @@ const getAllBooks = async ({
   limit = 10,
   sortBy = "title",
   sortOrder = "ASC",
-  filter = {}, 
+  filter = "",
+  category = "",
 }) => {
   const offset = (page - 1) * limit;
   const isNumeric = !isNaN(filter) && filter.trim() !== "";
-  const searchConditions = {
-    [Op.or]: [
-      { title: { [Op.iLike]: `%${filter}%` } },
-      { "$genres.name$": { [Op.iLike]: `%${filter}%` } },
-      { "$author.name$": { [Op.iLike]: `%${filter}%` } },
-      { "$category.name$": { [Op.iLike]: `%${filter}%` } },
-    ],
-  };
 
-  // Add numeric filter condition for publication_year
+  const searchConditions = filter
+    ? {
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${filter}%` } },
+          { "$genres.name$": { [Op.iLike]: `%${filter}%` } },
+          { "$author.name$": { [Op.iLike]: `%${filter}%` } },
+          // do NOT include category here for exact filter
+        ],
+      }
+    : {};
+
   if (isNumeric) {
     searchConditions[Op.or].push(
       where(cast(col("Book.publication_year"), "TEXT"), {
@@ -30,8 +33,14 @@ const getAllBooks = async ({
     );
   }
 
+  // Add exact category match if category filter is present
+  const whereClause = {
+    ...searchConditions,
+    ...(category.trim() !== "" ? { "$category.name$": category } : {}),
+  };
+
   const books = await Book.findAndCountAll({
-    where: filter ? searchConditions : {}, // Apply searchConditions if filter is not empty
+    where: whereClause,
     order: [[sortBy, sortOrder]],
     limit,
     offset,
@@ -47,7 +56,7 @@ const getAllBooks = async ({
         model: Category,
         as: "category",
         attributes: ["category_id", "name"],
-        required: false,
+        required: category.trim() !== "",  // Inner join if filtering by category
       },
       {
         model: Genre,
@@ -59,6 +68,11 @@ const getAllBooks = async ({
     ],
   });
 
+ 
+
+  
+  console.log("Where clause:", whereClause);
+  console.log("Category filter:", category);
 
   const booksWithAvailability = books.rows.map((book) => {
     const borrowedCopies = book.borrows ? book.borrows.length : 0;
@@ -71,10 +85,12 @@ const getAllBooks = async ({
       category: book.category?.name || null,
       CoverImage: book.cover_url,
       genres: book.genres.map((g) => g.name),
+      avgRating: book.avgRating,
       publishedYear: book.publication_year,
       totalCopies: book.totalCopies,
       borrowedCopies: book.totalCopies - book.available_copies,
       availableCopies: book.available_copies,
+      description: book.description,
       isAvailable: availableCopies > 0,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,

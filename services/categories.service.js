@@ -6,8 +6,8 @@ exports.createCategory = async (data) => {
   return await Category.create(data);
 };
 
-const getAllCategoryNoLimit = async () => {
-  return await Author.findAll();
+exports.getAllCategoryNoLimit = async () => {
+  return await Category.findAll();
 };
 
 exports.getAllCategories = async ({

@@ -26,7 +26,7 @@ router.post(
 );
 router.get(
   "/:id",
-  authenticateUser,
+  authenticateUser, 
   NotificationController.getUserNotifications
 );
 router.get(

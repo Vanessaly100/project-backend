@@ -1,7 +1,5 @@
-// const { Recommendation, Book, BorrowHistory, User } = require("../models");
 
-// recommendation.service.js
-const { Book, Borrow, User, Genre } = require("../models");
+const { Book, Borrow, User, Genre, Author } = require("../models");
 const { Op } = require('sequelize');
 const genre = require("../models/genre");
 
@@ -9,66 +7,85 @@ exports.generateRecommendationsForUser = async (userId, limit = 10) => {
   const user = await User.findByPk(userId);
   if (!user) throw new Error("User not found");
 
-  // Get user's most borrowed genres or favorite genres (optional advanced logic)
-
+  // 1. Top borrowed books
   const topBooks = await Book.findAll({
     order: [["borrowCount", "DESC"]],
-    limit,
+    limit: 10,
   });
 
- 
-  const topBookWithGenres = await Book.findByPk(topBooks[0]?.id, {
-    include: {
-      model: Genre,
-      attributes: ["genre_id", "name"],
-      through: { attributes: [] }, 
+  // 2. Recently added books
+  const recentBooks = await Book.findAll({
+    order: [["createdAt", "DESC"]],
+    limit: 10,
+  });
+
+  // 3. Recent year books (e.g., within 1 year from now)
+  const currentYear = new Date().getFullYear();
+  const recentYearBooks = await Book.findAll({
+    where: {
+      publication_year: {
+        [Op.gte]: currentYear - 1,
+      },
     },
+    limit: 10,
+    order: [["borrowCount", "DESC"]],
   });
 
-  if (!topBookWithGenres || !topBookWithGenres.Genres?.length) {
-    return []; 
+  // 4. Books by the most borrowed book's author
+  let authorBooks = [];
+  if (topBooks.length && topBooks[0].author_id) {
+    authorBooks = await Book.findAll({
+      where: {
+        author_id: topBooks[0].author_id,
+      },
+      include: {
+        model: Author,
+        as: "author",
+        attributes: ["name"],
+      },
+      limit: 10,
+    });
   }
 
-  // Use the first genre for example (or loop through if you want all)
-  const genreId = topBookWithGenres.Genres[0].genre_id;
+  // 5. Books with the same genre as most popular book
+  let genreBooks = [];
+  if (topBooks.length) {
+    const topBookWithGenres = await Book.findByPk(topBooks[0].book_id, {
+      include: {
+        model: Genre,
+        as: "genres",
+        attributes: ["genre_id", "name"],
+        through: { attributes: [] },
+      },
+    });
 
-  // Step 2: Find books with the same genre
-  const genreBooks = await Book.findAll({
-    include: {
-      model: Genre,
-      where: { genre_id: genreId },
-      attributes: ["name"],
-      through: { attributes: [] },
-    },
-    limit,
-  });
+    const genreId = topBookWithGenres?.Genres?.[0]?.genre_id;
+    if (genreId) {
+      genreBooks = await Book.findAll({
+        include: {
+          model: Genre,
+          as: "genres",
+          where: { genre_id: genreId },
+          attributes: ["name"],
+          through: { attributes: [] },
+        },
+        limit: 10,
+      });
+    }
+  }
 
-  // const topBook = await Book.findOne({
-  //   where: { id: topBooks[0].id },
-  //   include: {
-  //     model: Author,
-  //     attributes: ["author_id", "name"],
-  //   },
-  // });
+  // Combine all sources and remove duplicates
+  const allRecommendations = [
+    ...topBooks,
+    ...recentBooks,
+    ...recentYearBooks,
+    ...authorBooks,
+    ...genreBooks,
+  ];
 
-  if (!topBooks) return [];
-
-  const authorBooks = await Book.findAll({
-    where: {
-      author_id: topBooks.author_id,
-    },
-    include: {
-      model: Author,
-      attributes: ["name"],
-    },
-    limit,
-  });
-
-  // Merge and remove duplicates
-  const allRecommendations = [...topBooks, ...genreBooks, ...authorBooks];
   const uniqueBooks = Array.from(
-    new Set(allRecommendations.map((book) => book.id))
-  ).map((id) => allRecommendations.find((book) => book.id === id));
+    new Set(allRecommendations.map((book) => book.book_id))
+  ).map((id) => allRecommendations.find((book) => book.book_id === id));
 
   return uniqueBooks.slice(0, limit);
 };

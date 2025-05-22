@@ -1,4 +1,4 @@
-
+const { Review, Book } = require("../models");
 const asyncHandler = require("express-async-handler");
 const reviewService = require("../services/review.service");
 
@@ -24,3 +24,30 @@ exports.getBookReviews = asyncHandler(async (req, res) => {
   const reviews = await reviewService.getBookReviews(bookId);
   res.status(200).json({ success: true, data: reviews });
 });
+
+exports.getAllReviews = asyncHandler(async (req, res) => {
+  const reviews = await Review.findAll({
+    include: ["User", "Book"], // optional
+    order: [["createdAt", "DESC"]],
+  });
+  res.status(200).json({ success: true, data: reviews });
+});
+
+
+exports.checkIfReviewed = async (req, res) => {
+  const { userId, bookId } = req.params;
+
+  try {
+    const existingReview = await Review.findOne({
+      where: {
+        user_id: userId,
+        book_id: bookId,
+      },
+    });
+
+    res.status(200).json({ hasReviewed: !!existingReview });
+  } catch (err) {
+    console.error("Error checking review status:", err);
+    res.status(500).json({ message: "Server error checking review status" });
+  }
+};
