@@ -19,20 +19,27 @@ const io = initSocket(server);
 app.set("io", io);
 
 // CORS Configuration (Allow Frontend & Cookies)
-// const FRONTEND_ORIGIN = "http://localhost:3000";
-// const FRONTEND_ORIGIN = "http://localhost:5174";
-const FRONTEND_ORIGIN = "http://localhost:5173";
-
-
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const allowedOrigins = [FRONTEND_ORIGIN];
+
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.error("Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
-); 
+);
+
+
 app.use(compression());
 app.use(helmet());
 app.use(cookieParser());

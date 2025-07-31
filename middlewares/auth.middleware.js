@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const SECRET_KEY = process.env.JWT_SECRET;
-
+ 
 // General Authentication for All Users
 const authenticateUser = (req, res, next) => {
   let token = req.cookies.token || (req.headers.authorization && req.headers.authorization.split(" ")[1]);

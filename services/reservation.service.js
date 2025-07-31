@@ -226,11 +226,10 @@ exports.cancelReservationByAdmin = async (reservationId, reason) => {
   return reservation;
 };
 
-exports.fulfillReservation = async (reservationId, userId) => {
+exports.fulfillReservation = async (reservationId, requestingUserId, role) => {
   const reservation = await Reservation.findOne({
     where: {
       reservation_id: reservationId,
-      user_id: userId,
     },
     include: [
       {
@@ -240,12 +239,15 @@ exports.fulfillReservation = async (reservationId, userId) => {
     ],
   });
 
-  // ✅ First, handle null case
   if (!reservation) {
     throw new Error("Reservation not found");
   }
 
-  // Then check for status
+  
+  if (role !== "admin" && reservation.user_id !== requestingUserId) {
+    throw new Error("Unauthorized to fulfill this reservation");
+  }
+
   if (reservation.status === "fulfilled") {
     throw new Error("Reservation is already fulfilled");
   }
@@ -254,7 +256,6 @@ exports.fulfillReservation = async (reservationId, userId) => {
     throw new Error("Cannot fulfill a canceled reservation");
   }
 
-  // ✅ Fulfill the reservation
   const updatedReservation = await reservation.update({
     status: "fulfilled",
     fulfilledAt: new Date(),
@@ -263,18 +264,19 @@ exports.fulfillReservation = async (reservationId, userId) => {
   const user = await User.findByPk(reservation.user_id);
   const book = await Book.findByPk(reservation.book_id);
 
-  // ✅ Create notification
   await Notification.create({
     user_id: reservation.user_id,
     book_id: reservation.book_id,
-    borrow_id: null, // Or a real borrow_id if available
-    message: `Reservation: ${user.first_name} Your reserved book "${book.title}" is now available for borrowing.`,
+    borrow_id: null,
+    message: `Reservation: ${user.first_name}, your reserved book "${book.title}" is now available for borrowing.`,
     notification_type: "Reservation",
     role: "user",
   });
 
   return updatedReservation;
 };
+
+
 
 exports.deleteReservation = async(reservation_id) =>{
     const reservation = await Reservation.findByPk(reservation_id);

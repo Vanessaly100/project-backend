@@ -64,17 +64,20 @@ exports.cancelReservation = asyncHandler(async (req, res) => {
 
 exports.fulfillReservation = async (req, res) => {
   try {
-    const reservationId = req.params.reservationId; 
+    const reservationId = req.params.reservationId;
     const userId = req.user.id;
+    const role = req.user.role; 
 
     console.log("Fulfilling reservation for:", {
-      reservationId, 
+      reservationId,
       userId,
+      role,
     });
 
     const result = await ReservationService.fulfillReservation(
       reservationId,
-      userId
+      userId,
+      role 
     );
 
     res.status(200).json({
@@ -91,6 +94,7 @@ exports.fulfillReservation = async (req, res) => {
     });
   }
 };
+
 
 
 exports.cancelReservationByAdmin = asyncHandler(async (req, res) => {
