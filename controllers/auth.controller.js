@@ -6,7 +6,7 @@ const {
 const sendTokenResponse = require("../lib/sendToken");
 const NotificationService = require("../services/notification.service");
 const asyncHandler = require("express-async-handler");
-
+ 
 // User Registration
 const register = asyncHandler(async (req, res) => {
   const newUser = await registerUser(req.body);

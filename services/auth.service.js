@@ -67,7 +67,7 @@ const registerAdmin = async ({
     type: "register_admin",
   });
 
-  return newAdmin;
+  return newAdmin; 
 };
 
 
