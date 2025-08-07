@@ -22,6 +22,7 @@ app.set("io", io);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 // const FRONTEND_ORIGIN ="http://localhost:5173";
 const allowedOrigins = [FRONTEND_ORIGIN];
