@@ -14,7 +14,7 @@ const authenticateUser = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
-    req.user = decoded; // Attach user data to request
+    req.user = decoded; 
     console.log("Decoded Token:", decoded);
     next();
   } catch (error) {
@@ -22,7 +22,7 @@ const authenticateUser = (req, res, next) => {
   }
 };
 
-//  Admin Authorization (Only Admins)
+
 const authorizeAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Forbidden, admin access required" });

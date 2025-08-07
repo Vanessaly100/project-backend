@@ -71,19 +71,22 @@ const registerAdmin = async ({
 };
 
 
-// Login for users & admins
 const loginUser = async ({ email, password }) => {
   if (!email || !password) {
     throw new ValidationException("Email and password are required");
   }
 
-  const user = await User.findOne({ where: { email } });
+  const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
+
+  const user = await User.findOne({ where: { email: trimmedEmail } });
   if (!user) throw new NotFoundException("Invalid email or password");
 
-  const isMatch = await bcrypt.compare(password, user.password_hash);
+  const isMatch = await bcrypt.compare(trimmedPassword, user.password_hash);
   if (!isMatch) throw new UnauthorizedException("Invalid email or password");
 
   return user;
 };
+
 
 module.exports = { registerUser, registerAdmin, loginUser };
